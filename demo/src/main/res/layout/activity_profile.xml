@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <data>
+
+        <variable
+            name="model"
+            type="com.github.mproberts.rxdatabindingdemo.profile.vm.ProfileViewModel" />
+    </data>
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:clickable="true">
+
+        <android.support.design.widget.AppBarLayout
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize">
+
+            <android.support.v7.widget.Toolbar
+                android:id="@+id/toolbar"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                android:clipChildren="false"
+                app:layout_collapseMode="pin"
+                app:layout_scrollFlags="enterAlways|scroll|snap">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/Base.TextAppearance.AppCompat.Widget.ActionBar.Title"
+                        android:textColor="@color/trueWhite"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="100"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        android:text='@{model.displayName(), default="Bond James Bond"}' />
+
+                    <ImageView
+                        android:layout_width="30dp"
+                        android:layout_height="match_parent"
+                        android:paddingTop="12dp"
+                        android:paddingBottom="12dp"
+                        android:paddingRight="8dp"
+                        android:clickable="true"
+                        android:src="@drawable/ic_appbar_search"
+                        android:background="?attr/selectableItemBackgroundBorderless" />
+                </LinearLayout>
+            </android.support.v7.widget.Toolbar>
+        </android.support.design.widget.AppBarLayout>
+
+        <ImageView
+            android:layout_width="96dp"
+            android:layout_height="96dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"
+            app:photoUrl="@{model.profilePhoto()}"
+            app:placeholder="@{@drawable/default_profile_photo}" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:textColor="@color/darkText"
+            android:textSize="16sp"
+            android:text='@{model.displayName(), default="Ted Thompson"}'
+            app:defaultText="@{@string/default_display_name}" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="18sp"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:orientation="horizontal"
+            android:layout_gravity="center_horizontal"
+            android:gravity="center_vertical">
+
+            <ImageView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/ic_premium"
+                android:visibility="@{model.isPremium(), default=visible}"
+                android:layout_marginRight="4dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:text='@{model.username(), default="ted.thompson"}'
+                android:textColor="@{@drawable/level_list_premium_color}"
+                app:colorLevel="@{model.isPremium()}" />
+        </LinearLayout>
+    </LinearLayout>
+</layout>

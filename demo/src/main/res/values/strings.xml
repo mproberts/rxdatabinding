@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">RxDataBinding Demo</string>
+    <string name="default_display_name">Loading</string>
+</resources>

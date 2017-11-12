@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="colorLevel" format="integer" />
+    <declare-styleable name="View">
+        <attr name="data" format="reference" />
+    </declare-styleable>
+    <declare-styleable name="TextView">
+        <attr name="defaultText" format="string" />
+    </declare-styleable>
+    <declare-styleable name="ImageView">
+        <attr name="ifTrue" format="reference" />
+        <attr name="ifFalse" format="reference" />
+    </declare-styleable>
+    <declare-styleable name="RecyclerView">
+        <attr name="itemLayout" format="reference" />
+        <attr name="itemLayoutCreator" format="reference" />
+        <attr name="layoutManager" format="reference" />
+    </declare-styleable>
+</resources>

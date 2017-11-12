@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <data>
+
+        <variable
+            name="model"
+            type="com.github.mproberts.rxdatabindingdemo.home.vm.ContactListItemViewModel" />
+    </data>
+
+    <FrameLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="72dp"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:onClick="@{model::onItemTapped}">
+
+        <ImageView
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center_vertical"
+            android:layout_marginLeft="16dp"
+            app:photoUrl="@{model.profilePhoto()}"
+            app:placeholder="@{@drawable/default_profile_photo}" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginBottom="10sp"
+            android:layout_marginLeft="72dp"
+            android:textColor="@color/darkText"
+            android:textSize="16sp"
+            android:text='@{model.displayName(), default="Ted Thompson"}'
+            app:defaultText="@{@string/default_display_name}" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="18sp"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:orientation="horizontal"
+            android:layout_gravity="center_vertical"
+            android:gravity="center_vertical"
+            android:layout_marginTop="10sp"
+            android:layout_marginLeft="72dp">
+
+            <ImageView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/ic_premium"
+                android:visibility="@{model.isPremium(), default=visible}"
+                android:layout_marginRight="4dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:text='@{model.username(), default="ted.thompson"}'
+                android:textColor="@{@drawable/level_list_premium_color}"
+                app:colorLevel="@{model.isPremium()}" />
+        </LinearLayout>
+    </FrameLayout>
+</layout>
