@@ -121,7 +121,7 @@ public final class ViewDataBindings {
                 try {
                     newValue.accept(view.getText().toString());
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    DataBindingTools.handleError(e);
                 }
             }
 

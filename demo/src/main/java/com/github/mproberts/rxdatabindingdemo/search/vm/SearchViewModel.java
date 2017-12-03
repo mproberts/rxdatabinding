@@ -4,7 +4,6 @@ import com.github.mproberts.rxtools.list.FlowableList;
 
 public interface SearchViewModel {
     interface Navigator {
-
         void navigateToSearch();
     }
 

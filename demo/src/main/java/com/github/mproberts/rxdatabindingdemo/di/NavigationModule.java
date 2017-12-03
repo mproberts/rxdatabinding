@@ -13,11 +13,11 @@ public class NavigationModule {
 
     @Provides
     public ProfileViewModel.Navigator providesProfileNavigator(Context context) {
-        return Navigation.create(context, AndroidNavigator.class);
+        return new AndroidBindingNavigator(context);
     }
 
     @Provides
     public SearchViewModel.Navigator providesSearchNavigator(Context context) {
-        return Navigation.create(context, AndroidNavigator.class);
+        return new AndroidBindingNavigator(context);
     }
 }
