@@ -15,6 +15,7 @@ class NavigationSourceInfoProvider {
     private final String _targetPackage;
     private final String _targetClassName;
     private final String _baseActivityTypeName;
+    private String _brClassName;
     private final Map<String, String> _viewModelTypeElements = new HashMap<>();
     private final Map<String, String> _methodToTypeResolver = new HashMap<>();
 
@@ -37,6 +38,10 @@ class NavigationSourceInfoProvider {
         return _baseActivityTypeName;
     }
 
+    public String getBindingClassName() {
+        return _brClassName;
+    }
+
     public String findTypeElementForNavigator(String navigator) {
         return _viewModelTypeElements.get(navigator);
     }
@@ -46,6 +51,16 @@ class NavigationSourceInfoProvider {
     }
 
     private void buildResolverMaps(TypeElement element, Set<? extends Element> rootElements) {
+
+        for (Element rootElement : rootElements) {
+            if (rootElement.toString().endsWith(".BuildConfig")) {
+                String qualifiedName = rootElement.toString();
+                String rootPackage = CodegenTools.packageOf(qualifiedName);
+
+                _brClassName = rootPackage + ".BR";
+            }
+        }
+
 
         for (TypeMirror anInterface : element.getInterfaces()) {
             String navigationTypeName = anInterface.toString();

@@ -14,7 +14,6 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
-import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 
 class ActivityMethodProcessor {
@@ -61,7 +60,7 @@ class ActivityMethodProcessor {
                 .addModifiers(Modifier.PRIVATE)
                 .addParameter(INTENT_TYPE_NAME, "intent")
                 .addStatement("Object viewModel = $T.intentTo$L(intent, this)", rootTypeName, viewModelClassName)
-                .addStatement("_binding.setVariable(com.github.mproberts.rxdatabinding.BR.model, viewModel)")
+                .addStatement("_binding.setVariable($L.model, viewModel)", _info.getBindingClassName())
                 .build());
         _activityBuilder.addMethod(MethodSpec.methodBuilder("getLayoutResource")
                 .addModifiers(Modifier.PROTECTED, Modifier.ABSTRACT)
