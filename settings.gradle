@@ -1,1 +1,1 @@
-include ':demo', ':library', ':navigation-annotations', ':navigation-processor'
+include ':demo', ':library'
