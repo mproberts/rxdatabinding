@@ -1,7 +1,6 @@
 package com.github.mproberts.rxdatabinding.navigation;
 
 import com.google.auto.service.AutoService;
-import com.google.common.collect.Sets;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
@@ -10,6 +9,7 @@ import com.squareup.javapoet.TypeSpec;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -33,9 +33,12 @@ public class NavigationProcessor extends AbstractProcessor {
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
-        return Sets.newHashSet(
-                NavigationSource.class.getCanonicalName(),
-                ActivityNavigation.class.getCanonicalName());
+        HashSet<String> supported = new HashSet<>();
+
+        supported.add(NavigationSource.class.getCanonicalName());
+        supported.add(ActivityNavigation.class.getCanonicalName());
+
+        return supported;
     }
 
     @Override
