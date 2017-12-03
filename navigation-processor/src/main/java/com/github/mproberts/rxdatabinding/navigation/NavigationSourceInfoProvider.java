@@ -1,5 +1,6 @@
 package com.github.mproberts.rxdatabinding.navigation;
 
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,7 +15,7 @@ class NavigationSourceInfoProvider {
     private final String _targetPackage;
     private final String _targetClassName;
     private final String _baseActivityTypeName;
-    private final Map<String, TypeElement> _viewModelTypeElements = new HashMap<>();
+    private final Map<String, String> _viewModelTypeElements = new HashMap<>();
     private final Map<String, String> _methodToTypeResolver = new HashMap<>();
 
     public NavigationSourceInfoProvider(TypeElement element, Set<? extends Element> rootElements, String targetClassName, String targetPackage, String baseActivityTypeName) {
@@ -36,7 +37,7 @@ class NavigationSourceInfoProvider {
         return _baseActivityTypeName;
     }
 
-    public TypeElement findTypeElementForNavigator(String navigator) {
+    public String findTypeElementForNavigator(String navigator) {
         return _viewModelTypeElements.get(navigator);
     }
 
@@ -49,6 +50,30 @@ class NavigationSourceInfoProvider {
         for (TypeMirror anInterface : element.getInterfaces()) {
             String navigationTypeName = anInterface.toString();
 
+            try {
+                Class<?> navigationClass = Class.forName(navigationTypeName);
+
+                throw new IllegalStateException("Only inner classes can be used as navigators");
+            } catch (ClassNotFoundException e) {
+                String outerClassName = CodegenTools.packageOf(navigationTypeName);
+                String innerClassName = outerClassName + "$" + CodegenTools.classNameOf(navigationTypeName);
+                try {
+                    Class<?> navigationInnerClass = Class.forName(innerClassName);
+
+                    for (Method method : navigationInnerClass.getMethods()) {
+                        String methodName = method.getName();
+
+                        _methodToTypeResolver.put(methodName, navigationTypeName);
+                    }
+
+                    _viewModelTypeElements.put(navigationTypeName, outerClassName);
+
+                    return;
+                } catch (ClassNotFoundException e1) {
+                    // ignored
+                }
+            }
+
             for (Element rootElement : rootElements) {
                 if (!(rootElement instanceof TypeElement)) {
                     continue;
@@ -58,7 +83,8 @@ class NavigationSourceInfoProvider {
                 String classTypeName = checkTypeElement.toString();
 
                 if (navigationTypeName.startsWith(classTypeName)) {
-                    _viewModelTypeElements.put(navigationTypeName, checkTypeElement);
+                    String checkElementTypeName = classTypeName;
+                    _viewModelTypeElements.put(navigationTypeName, checkElementTypeName);
 
                     List<? extends Element> enclosedElements = checkTypeElement.getEnclosedElements();
 

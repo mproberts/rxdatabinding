@@ -40,8 +40,8 @@ class ActivityMethodProcessor {
 
         String methodName = method.getSimpleName().toString();
         String declaringNavigator = _info.findNavigationTypeForMethod(methodName);
-        TypeElement viewModelType = _info.findTypeElementForNavigator(declaringNavigator);
-        TypeName viewModelTypeName = TypeName.get(viewModelType.asType());
+        String viewModelType = _info.findTypeElementForNavigator(declaringNavigator);
+        TypeName viewModelTypeName = CodegenTools.typeNameOf(viewModelType);
         String viewModelClassName = CodegenTools.classNameOf(viewModelType);
         String providerClassName = _info.getTargetClassName() + viewModelClassName + "Provider";
 
@@ -97,8 +97,8 @@ class ActivityMethodProcessor {
         String targetClassFullName = CodegenTools.getQualifiedClassName(activityAnnotation::value);
         String methodName = method.getSimpleName().toString();
         String declaringNavigator = _info.findNavigationTypeForMethod(methodName);
-        TypeElement viewModelType = _info.findTypeElementForNavigator(declaringNavigator);
-        TypeName viewModelTypeName = TypeName.get(viewModelType.asType());
+        String viewModelType = _info.findTypeElementForNavigator(declaringNavigator);
+        TypeName viewModelTypeName = CodegenTools.typeNameOf(viewModelType);
 
         if (!_initialized) {
             _initialized = true;

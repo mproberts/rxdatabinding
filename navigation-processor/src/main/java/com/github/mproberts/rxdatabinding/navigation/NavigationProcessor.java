@@ -18,11 +18,14 @@ import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.Processor;
 import javax.annotation.processing.RoundEnvironment;
+import javax.annotation.processing.SupportedSourceVersion;
+import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 
+@SupportedSourceVersion(SourceVersion.RELEASE_6)
 @AutoService(Processor.class)
 public class NavigationProcessor extends AbstractProcessor {
     private static final String CODEGEN_PREFIX = "AndroidBinding";
