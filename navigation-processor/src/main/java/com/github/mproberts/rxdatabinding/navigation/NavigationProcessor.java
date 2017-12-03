@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
@@ -51,9 +52,14 @@ public class NavigationProcessor extends AbstractProcessor {
         Set<? extends Element> rootElements = roundEnvironment.getRootElements();
 
         for (Element element : roundEnvironment.getElementsAnnotatedWith(NavigationSource.class)) {
-            NavigationSource sourceAnnotation = element.getAnnotation(NavigationSource.class);
+            final NavigationSource sourceAnnotation = element.getAnnotation(NavigationSource.class);
 
-            String baseActivityName = CodegenTools.getQualifiedClassName(sourceAnnotation::baseActivity);
+            String baseActivityName = CodegenTools.getQualifiedClassName(new Callable<Class<?>>() {
+                @Override
+                public Class<?> call() throws Exception {
+                    return sourceAnnotation.baseActivity();
+                }
+            });
 
             String packageName = CodegenTools.packageOf((TypeElement) element);
             String className = CodegenTools.classNameOf((TypeElement) element);
@@ -74,13 +80,18 @@ public class NavigationProcessor extends AbstractProcessor {
 
             List<? extends Element> sourceMethods = element.getEnclosedElements();
             for (Element activityMethod : sourceMethods) {
-                ActivityNavigation activityAnnotation = activityMethod.getAnnotation(ActivityNavigation.class);
+                final ActivityNavigation activityAnnotation = activityMethod.getAnnotation(ActivityNavigation.class);
 
                 if (activityAnnotation == null) {
                     continue;
                 }
 
-                String targetClassFullName = CodegenTools.getQualifiedClassName(activityAnnotation::value);
+                String targetClassFullName = CodegenTools.getQualifiedClassName(new Callable<Class<?>>() {
+                    @Override
+                    public Class<?> call() throws Exception {
+                        return activityAnnotation.value();
+                    }
+                });
                 ExecutableElement method = (ExecutableElement) activityMethod;
 
                 ActivityMethodProcessor methodProcessor = activityMethodProcessorMap.get(targetClassFullName);

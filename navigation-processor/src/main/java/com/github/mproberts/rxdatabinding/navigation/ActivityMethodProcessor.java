@@ -9,6 +9,7 @@ import com.squareup.javapoet.TypeSpec;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.Callable;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
@@ -34,7 +35,7 @@ class ActivityMethodProcessor {
         _codegenPrefix = codegenPrefix;
     }
 
-    private void prepare(ExecutableElement method, ActivityNavigation activityAnnotation) {
+    private void prepare(ExecutableElement method, final ActivityNavigation activityAnnotation) {
         final TypeName baseActivityTypeName = CodegenTools.typeNameOf(_info.getBaseActivityTypeName());
 
         String methodName = method.getSimpleName().toString();
@@ -46,7 +47,12 @@ class ActivityMethodProcessor {
 
         TypeName rootTypeName = ClassName.get(_info.getTargetPackage(), _codegenPrefix + _info.getTargetClassName());
         TypeName providerTypeName = ClassName.get(_info.getTargetPackage(), _codegenPrefix + _info.getTargetClassName(), providerClassName);
-        String targetClassFullName = _codegenPrefix + CodegenTools.classNameOf(CodegenTools.getQualifiedClassName(activityAnnotation::value));
+        String targetClassFullName = _codegenPrefix + CodegenTools.classNameOf(CodegenTools.getQualifiedClassName(new Callable<Class<?>>() {
+            @Override
+            public Class<?> call() throws Exception {
+                return activityAnnotation.value();
+            }
+        }));
 
         _activityProviderBuilder = TypeSpec.interfaceBuilder(providerClassName)
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC);
@@ -92,8 +98,13 @@ class ActivityMethodProcessor {
                 .returns(viewModelTypeName);
     }
 
-    public void addMethod(ExecutableElement method, ActivityNavigation activityAnnotation) {
-        String targetClassFullName = CodegenTools.getQualifiedClassName(activityAnnotation::value);
+    public void addMethod(ExecutableElement method, final ActivityNavigation activityAnnotation) {
+        String targetClassFullName = CodegenTools.getQualifiedClassName(new Callable<Class<?>>() {
+            @Override
+            public Class<?> call() throws Exception {
+                return activityAnnotation.value();
+            }
+        });
         String methodName = method.getSimpleName().toString();
         String declaringNavigator = _info.findNavigationTypeForMethod(methodName);
         String viewModelType = _info.findTypeElementForNavigator(declaringNavigator);
