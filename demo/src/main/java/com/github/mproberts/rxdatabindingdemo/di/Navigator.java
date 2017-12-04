@@ -9,8 +9,8 @@ import com.github.mproberts.rxdatabindingdemo.search.activity.SearchActivity;
 import com.github.mproberts.rxdatabindingdemo.search.vm.SearchViewModel;
 import com.github.mproberts.rxdatabindingdemo.tools.DemoActivity;
 
-import com.github.mproberts.rxdatabinding.navigation.ActivityNavigation;
-import com.github.mproberts.rxdatabinding.navigation.NavigationSource;
+import com.github.mproberts.navigator.ActivityNavigation;
+import com.github.mproberts.navigator.NavigationSource;
 
 @NavigationSource(baseActivity = DemoActivity.class)
 public abstract class Navigator implements ProfileViewModel.Navigator, SearchViewModel.Navigator, HomeViewModel.Navigator {
