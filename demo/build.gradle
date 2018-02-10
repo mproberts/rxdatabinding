@@ -54,6 +54,7 @@ dependencies {
     compile "com.github.bumptech.glide:glide:4.2.0"
     annotationProcessor "com.google.dagger:dagger-compiler:2.12"
     compile 'com.github.mproberts.navigator:annotations:e3d05b495c'
+    compile 'com.github.mproberts:rxtools:0.5.2'
     annotationProcessor 'com.github.mproberts.navigator:processor:e3d05b495c'
     testCompile 'junit:junit:4.12'
 }
