@@ -1,11 +1,14 @@
 package com.github.mproberts.rxdatabinding.tools;
 
 import android.support.annotation.Dimension;
+import android.support.annotation.StringRes;
 
 import com.github.mproberts.rxtools.types.Optional;
 
 import org.reactivestreams.Publisher;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import io.reactivex.Flowable;
@@ -84,5 +87,38 @@ public final class Binding {
                 return value == Boolean.FALSE;
             }
         });
+    }
+
+    public static Flowable<Optional<String>> chooseString(Flowable<Boolean> choice, final Object trueOption, final Object falseOption) {
+        return choose(choice, (String) trueOption, (String) falseOption);
+    }
+
+    private static <T> Flowable<Optional<T>> choose(Flowable<Boolean> choice, final T trueOption, final T falseOption) {
+        return choice
+                .map(new Function<Boolean, Optional<T>>() {
+                    @Override
+                    public Optional<T> apply(Boolean aBoolean) throws Exception {
+                        return aBoolean ? Optional.ofNullable(trueOption) : Optional.ofNullable(falseOption);
+                    }
+                });
+    }
+
+    public static Flowable<String> format(final String format, Flowable<?> ...flowables) {
+        return Flowable
+                .combineLatest(flowables, new Function<Object[], List<?>>() {
+                    @Override
+                    public List<?> apply(@NonNull Object[] objects) throws Exception {
+                        @SuppressWarnings("unchecked")
+                        List<?> strings = Arrays.asList(objects);
+
+                        return strings;
+                    }
+                })
+                .map(new Function<List<?>, String>() {
+                    @Override
+                    public String apply(List<?> objects) throws Exception {
+                        return String.format(format, objects.toArray());
+                    }
+                });
     }
 }
