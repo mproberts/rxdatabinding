@@ -54,7 +54,7 @@ public final class SwitcherDataBindings {
     public static void bindTextSwitcherList(final TextSwitcher view, int stringListRes, long rate) {
         final String[] strings = view.getContext().getResources().getStringArray(stringListRes);
 
-        Flowable<String> stringRate = Flowable.interval(rate, TimeUnit.MILLISECONDS)
+        Flowable<String> stringRate = Flowable.interval(0, rate, TimeUnit.MILLISECONDS)
                 .map(new Function<Long, String>() {
                     @Override
                     public String apply(Long period) throws Exception {
