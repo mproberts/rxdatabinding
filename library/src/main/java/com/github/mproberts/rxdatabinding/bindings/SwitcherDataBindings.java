@@ -5,6 +5,7 @@ import android.databinding.BindingAdapter;
 import android.databinding.DataBindingUtil;
 import android.databinding.ViewDataBinding;
 import android.support.annotation.LayoutRes;
+import android.support.annotation.StringRes;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.TextSwitcher;
@@ -12,9 +13,13 @@ import android.widget.ViewSwitcher;
 
 import com.github.mproberts.rxdatabinding.BR;
 import com.github.mproberts.rxdatabinding.tools.DataBindingTools;
+import com.github.mproberts.rxdatabinding.tools.UiThreadScheduler;
+
+import java.util.concurrent.TimeUnit;
 
 import io.reactivex.Flowable;
 import io.reactivex.functions.Consumer;
+import io.reactivex.functions.Function;
 
 public final class SwitcherDataBindings {
 
@@ -43,6 +48,21 @@ public final class SwitcherDataBindings {
     public interface ViewFactoryCreator {
 
         ViewSwitcher.ViewFactory getFactory(Context context);
+    }
+
+    @BindingAdapter(value = {"stringList", "rate"})
+    public static void bindTextSwitcherList(final TextSwitcher view, int stringListRes, long rate) {
+        final String[] strings = view.getContext().getResources().getStringArray(stringListRes);
+
+        Flowable<String> stringRate = Flowable.interval(rate, TimeUnit.MILLISECONDS)
+                .map(new Function<Long, String>() {
+                    @Override
+                    public String apply(Long period) throws Exception {
+                        return strings[(int) (period % strings.length)];
+                    }
+                });
+
+        bindTextSwitcherText(view, stringRate);
     }
 
     @BindingAdapter(value = {"android:text"})
