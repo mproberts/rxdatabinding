@@ -91,6 +91,7 @@ public final class RecyclerViewDataBindings {
     }
 
     public static class TypedLayoutCreator implements RecyclerViewAdapter.ItemViewCreator {
+        
         private Map<Class<?>, Integer> _layouts = new HashMap<>();
 
         public TypedLayoutCreator addLayout(@LayoutRes int layoutId, Class<?> clazz) {
