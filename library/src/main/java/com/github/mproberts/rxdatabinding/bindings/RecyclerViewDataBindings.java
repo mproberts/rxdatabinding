@@ -101,7 +101,15 @@ public final class RecyclerViewDataBindings {
 
         @Override
         public final int getItemLayoutType(Object viewModel) {
-            return _layouts.get(viewModel.getClass());
+            Class<?> clazz = viewModel.getClass();
+
+            for (Map.Entry<Class<?>, Integer> layoutEntry : _layouts.entrySet()) {
+                if (layoutEntry.getKey().isAssignableFrom(clazz)) {
+                    return layoutEntry.getValue();
+                }
+            }
+
+            return 0;
         }
 
         @Override
