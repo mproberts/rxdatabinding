@@ -10,10 +10,12 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.github.mproberts.rxdatabinding.BR;
+import com.github.mproberts.rxdatabinding.R;
 import com.github.mproberts.rxdatabinding.tools.DataBindingTools;
 import com.github.mproberts.rxdatabinding.tools.UiThreadScheduler;
 import com.github.mproberts.rxtools.list.Change;
 import com.github.mproberts.rxtools.list.FlowableList;
+import com.github.mproberts.rxtools.list.SimpleFlowableList;
 import com.github.mproberts.rxtools.list.Update;
 
 import java.util.HashMap;
@@ -23,6 +25,7 @@ import java.util.concurrent.Callable;
 
 import io.reactivex.disposables.Disposable;
 import io.reactivex.functions.Consumer;
+import io.reactivex.functions.Function;
 
 public final class RecyclerViewDataBindings {
     private RecyclerViewDataBindings() {
@@ -50,7 +53,7 @@ public final class RecyclerViewDataBindings {
         }
     }
 
-    public static class BasicLayoutCreator implements RecyclerViewAdapter.ItemViewCreator {
+    public static class BasicLayoutCreator extends RecyclerViewAdapter.ItemViewCreator {
         private final int _layoutId;
 
         public BasicLayoutCreator(@LayoutRes int layoutId) {
@@ -70,7 +73,7 @@ public final class RecyclerViewDataBindings {
         }
     }
 
-    public static abstract class PredicateLayoutCreator<T> implements RecyclerViewAdapter.ItemViewCreator {
+    public static abstract class PredicateLayoutCreator<T> extends RecyclerViewAdapter.ItemViewCreator {
         @LayoutRes
         public abstract int getLayoutResource(T model);
 
@@ -90,7 +93,7 @@ public final class RecyclerViewDataBindings {
         }
     }
 
-    public static class TypedLayoutCreator implements RecyclerViewAdapter.ItemViewCreator {
+    public static class TypedLayoutCreator extends RecyclerViewAdapter.ItemViewCreator {
         
         private Map<Class<?>, Integer> _layouts = new HashMap<>();
 
@@ -121,13 +124,103 @@ public final class RecyclerViewDataBindings {
         }
     }
 
+    public static class SectionedLayoutCreator extends RecyclerViewAdapter.ItemViewCreator  {
+
+        private static class Section {
+            private int _headerLayout;
+            private FlowableList<?> _list;
+            private RecyclerViewAdapter.ItemViewCreator _layoutCreator;
+
+            public int getHeaderLayout() {
+                return _headerLayout;
+            }
+
+            public RecyclerViewAdapter.ItemViewCreator getLayout() {
+                return _layoutCreator;
+            }
+
+            public FlowableList<?> getList() {
+                return _list;
+            }
+
+            public Section(int headerLayout, RecyclerViewAdapter.ItemViewCreator layoutCreator, FlowableList<?> list) {
+                _headerLayout = headerLayout;
+                _layoutCreator = layoutCreator;
+                _list = list;
+            }
+        }
+
+        private static class SectionItem<T> {
+            private final Section _owner;
+            private final T _value;
+
+            public SectionItem(Section owner, T value) {
+                _owner = owner;
+                _value = value;
+            }
+
+            public Section getOwner() {
+                return _owner;
+            }
+
+            public T getValue() {
+                return _value;
+            }
+        }
+
+        private SimpleFlowableList<FlowableList<SectionItem>> _items = new SimpleFlowableList<>();
+
+        public <T> SectionedLayoutCreator addSection(int headerLayout, int layout, FlowableList<T> list) {
+            final Section section = new Section(headerLayout, new BasicLayoutCreator(layout), list);
+
+            _items.add(list.map(new Function<T, SectionItem>() {
+                @Override
+                public SectionItem<T> apply(T value) throws Exception {
+                    return new SectionItem(section, value);
+                }
+            }));
+
+            return this;
+        }
+
+        public FlowableList<?> items() {
+            return FlowableList.concat(_items);
+        }
+
+        @Override
+        public int getItemLayoutType(Object wrappedViewModel) {
+            SectionItem sectionItem = (SectionItem) wrappedViewModel;
+
+            Section owner = sectionItem.getOwner();
+            Object viewModel = sectionItem.getValue();
+
+            return owner.getLayout().getItemLayoutType(viewModel);
+        }
+
+        @Override
+        public void bind(Object wrappedViewModel, RecyclerViewAdapter.ViewHolder holder) {
+            SectionItem sectionItem = (SectionItem) wrappedViewModel;
+
+            Object viewModel = sectionItem.getValue();
+
+            super.bind(viewModel, holder);
+        }
+
+        @Override
+        public Object createItemLayout(LayoutInflater inflater, ViewGroup parent, int layoutType) {
+            View contentView = DataBindingUtil.inflate(inflater, layoutType, parent, false).getRoot();
+
+            return new ItemViewHolder(contentView);
+        }
+    }
+
     private static class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapter.ViewHolder> {
         private FlowableList<?> _list;
         private List<?> _currentState;
         private Disposable _subscription;
         private ItemViewCreator _viewCreator;
 
-        public interface ItemViewCreator<TViewHolder> {
+        public static abstract class ItemViewCreator<TViewHolder> {
             class ItemViewHolder extends ViewHolder {
 
                 public ItemViewHolder(View contentView) {
@@ -135,9 +228,13 @@ public final class RecyclerViewDataBindings {
                 }
             }
 
-            int getItemLayoutType(Object viewModel);
+            public abstract int getItemLayoutType(Object viewModel);
 
-            TViewHolder createItemLayout(LayoutInflater inflater, ViewGroup parent, int layoutType);
+            public abstract TViewHolder createItemLayout(LayoutInflater inflater, ViewGroup parent, int layoutType);
+
+            public void bind(Object viewModel, ViewHolder holder) {
+                holder.bind(viewModel);
+            }
         }
 
         public static class ViewHolder extends RecyclerView.ViewHolder {
