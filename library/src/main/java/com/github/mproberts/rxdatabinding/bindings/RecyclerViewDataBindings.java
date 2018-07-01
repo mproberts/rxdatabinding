@@ -124,7 +124,9 @@ public final class RecyclerViewDataBindings {
         }
     }
 
-    public static class SectionedLayoutCreator extends RecyclerViewAdapter.ItemViewCreator  {
+    public static class SectionedLayoutCreator
+            extends RecyclerViewAdapter.ItemViewCreator
+            implements RecyclerViewAdapter.ItemDataProvider {
 
         private static class Section {
             private int _headerLayout;
@@ -183,7 +185,8 @@ public final class RecyclerViewDataBindings {
             return this;
         }
 
-        public FlowableList<?> items() {
+        @Override
+        public FlowableList<?> getList() {
             return FlowableList.concat(_items);
         }
 
@@ -215,10 +218,15 @@ public final class RecyclerViewDataBindings {
     }
 
     private static class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapter.ViewHolder> {
-        private FlowableList<?> _list;
         private List<?> _currentState;
         private Disposable _subscription;
         private ItemViewCreator _viewCreator;
+        private ItemDataProvider _dataProvider;
+
+        public interface ItemDataProvider {
+
+            FlowableList<?> getList();
+        }
 
         public static abstract class ItemViewCreator<TViewHolder> {
             class ItemViewHolder extends ViewHolder {
@@ -252,8 +260,17 @@ public final class RecyclerViewDataBindings {
             }
         }
 
-        private RecyclerViewAdapter(FlowableList<?> list, ItemViewCreator viewCreator) {
-            _list = list;
+        private RecyclerViewAdapter(final FlowableList<?> list, ItemViewCreator viewCreator) {
+            this(new ItemDataProvider() {
+                @Override
+                public FlowableList<?> getList() {
+                    return list;
+                }
+            }, viewCreator);
+        }
+
+        private RecyclerViewAdapter(ItemDataProvider dataProvider, ItemViewCreator viewCreator) {
+            _dataProvider = dataProvider;
             _viewCreator = viewCreator;
 
             setHasStableIds(false);
@@ -263,8 +280,10 @@ public final class RecyclerViewDataBindings {
         public void onAttachedToRecyclerView(RecyclerView recyclerView) {
             super.onAttachedToRecyclerView(recyclerView);
 
-            if (_list != null) {
-                _subscription = _list.updates()
+            FlowableList<?> list = _dataProvider.getList();
+
+            if (list != null) {
+                _subscription = list.updates()
                         .observeOn(UiThreadScheduler.uiThread())
                         .subscribe(new Consumer<Update<?>>() {
                             @Override
