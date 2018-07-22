@@ -176,7 +176,8 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
                                 break;
                             }
                             case Reloaded: {
-                                // TODO: cancel notifications
+                                _notificationManager.cancelAll();
+
                                 List<NotificationBinding> notificationBindings = _notificationBindings;
 
                                 List<NotificationBinding> reloadedNotificationBindings = new ArrayList<>();
