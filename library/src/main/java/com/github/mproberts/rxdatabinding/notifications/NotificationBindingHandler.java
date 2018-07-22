@@ -9,6 +9,7 @@ import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
+import android.telephony.SubscriptionManager;
 
 import com.github.mproberts.rxtools.list.Change;
 import com.github.mproberts.rxtools.list.FlowableList;
@@ -38,7 +39,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
 
         private final CompositeDisposable _localDisposable = new CompositeDisposable();
         private final Consumer<NotificationBinding> _callback;
-        private int _notificationId;
+        private int _notificationId = INVALID_NOTIFICATION_ID;
         private final NotificationCompat.Builder _builder;
 
         private NotificationBinding(Context context, String channelId, Consumer<NotificationBinding> callback) {
@@ -105,11 +106,20 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
             return _builder;
         }
 
+        private void setSilent() {
+            _builder.setVibrate(new long[0]);
+            _builder.setSound(null);
+        }
+
         private void invalidate() {
-            try {
-                _callback.accept(this);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
+            if (_notificationId != INVALID_NOTIFICATION_ID) {
+                setSilent();
+
+                try {
+                    _callback.accept(this);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
             }
         }
     }
@@ -143,8 +153,6 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
         _notificationManager = NotificationManagerCompat.from(context);
 
         setupNotificationChannel(context);
-
-        // TODO: listen to something
     }
 
     public void setList(FlowableList<T> list) {
@@ -154,15 +162,9 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
         _boundList = list;
 
         if (list != null) {
-
-            list.updates().subscribe(new Subscriber<Update<T>>() {
+            Disposable subscription = list.updates().subscribe(new Consumer<Update<T>>() {
                 @Override
-                public void onSubscribe(Subscription s) {
-
-                }
-
-                @Override
-                public void onNext(Update<T> update) {
+                public void accept(Update<T> update) throws Exception {
                     for (Change change : update.changes) {
                         switch (change.type) {
                             case Inserted: {
@@ -205,15 +207,9 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
                         }
                     }
                 }
-
-                @Override
-                public void onError(Throwable t) {
-                }
-
-                @Override
-                public void onComplete() {
-                }
             });
+
+            _listSubscription.add(subscription);
         }
     }
 
@@ -235,7 +231,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
             NotificationManager notificationService = context.getSystemService(NotificationManager.class);
 
             if (notificationService != null) {
-                NotificationChannel channel = createNotificationChannel(_channelId, "", NotificationManager.IMPORTANCE_DEFAULT, "");
+                NotificationChannel channel = createNotificationChannel(_channelId, "Test", NotificationManager.IMPORTANCE_DEFAULT, "Something");
                 notificationService.createNotificationChannel(channel);
             }
         }
