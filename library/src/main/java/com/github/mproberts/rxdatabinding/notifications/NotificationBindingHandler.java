@@ -7,11 +7,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
+import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
 
 import com.github.mproberts.rxtools.list.Change;
 import com.github.mproberts.rxtools.list.FlowableList;
 import com.github.mproberts.rxtools.list.Update;
+import com.github.mproberts.rxtools.types.Optional;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -19,8 +21,11 @@ import org.reactivestreams.Subscription;
 import java.util.ArrayList;
 import java.util.List;
 
+import io.reactivex.Flowable;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Consumer;
+import io.reactivex.functions.Function;
 
 public class NotificationBindingHandler<T> extends BroadcastReceiver {
 
@@ -32,8 +37,50 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
     public static final class NotificationBinding implements Disposable {
 
         private final CompositeDisposable _localDisposable = new CompositeDisposable();
+        private final Consumer<NotificationBinding> _callback;
+        private int _notificationId;
+        private final NotificationCompat.Builder _builder;
 
-        private NotificationBinding() {
+        private NotificationBinding(Context context, String channelId, Consumer<NotificationBinding> callback) {
+            _builder = new NotificationCompat.Builder(context, channelId);
+            _callback = callback;
+        }
+
+        public void setContentTitle(Flowable<String> title) {
+            bind(title, new Consumer<String>() {
+                @Override
+                public void accept(String title) throws Exception {
+                    _builder.setContentTitle(title);
+                }
+            });
+        }
+
+        public void setContentText(Flowable<String> text) {
+            bind(text, new Consumer<String>() {
+                @Override
+                public void accept(String text) throws Exception {
+                    _builder.setContentText(text);
+                }
+            });
+        }
+
+        public <U> void bind(Flowable<Optional<U>> source, final U ifEmpty, final Consumer<U> binding) {
+            bind(source.map(new Function<Optional<U>, U>() {
+                @Override
+                public U apply(Optional<U> optionalValue) throws Exception {
+                    return optionalValue.orElse(ifEmpty);
+                }
+            }).startWith(ifEmpty), binding);
+        }
+
+        public <U> void bind(Flowable<U> source, final Consumer<U> binding) {
+            _localDisposable.add(source.subscribe(new Consumer<U>() {
+                @Override
+                public void accept(U value) throws Exception {
+                    binding.accept(value);
+                    invalidate();
+                }
+            }));
         }
 
         @Override
@@ -44,6 +91,26 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
         @Override
         public boolean isDisposed() {
             return _localDisposable.isDisposed();
+        }
+
+        private int getNotificationId() {
+            return _notificationId;
+        }
+
+        private void setNotificationId(int notificationId) {
+            _notificationId = notificationId;
+        }
+
+        public NotificationCompat.Builder getBuilder() {
+            return _builder;
+        }
+
+        private void invalidate() {
+            try {
+                _callback.accept(this);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
@@ -58,7 +125,21 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
     private FlowableList<T> _boundList = null;
     private List<NotificationBinding> _notificationBindings = new ArrayList<>();
 
-    public NotificationBindingHandler(Context context) {
+    private NotificationCreator<T> _creator;
+
+    private final Context _context;
+
+    private Context getContext() {
+        return _context;
+    }
+
+    private String getChannelId() {
+        return _channelId;
+    }
+
+    public NotificationBindingHandler(String channelId, Context context) {
+        _context = context;
+        _channelId = channelId;
         _notificationManager = NotificationManagerCompat.from(context);
 
         setupNotificationChannel(context);
@@ -67,7 +148,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
     }
 
     public void setList(FlowableList<T> list) {
-        FlowableList<T> boundList = _boundList;
+        FlowableList<T> previousList = _boundList;
 
         _listSubscription.dispose();
         _boundList = list;
@@ -122,7 +203,6 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
                             }
                         }
                     }
-
                 }
 
                 @Override
@@ -134,6 +214,10 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
                 }
             });
         }
+    }
+
+    public void setCreator(NotificationCreator<T> creator) {
+        _creator = creator;
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -156,8 +240,27 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
         }
     }
 
+    private void notifyBinding(NotificationBinding binding) {
+        NotificationCompat.Builder builder = binding.getBuilder();
+
+        _notificationManager.notify(binding.getNotificationId(), builder.build());
+    }
+
     private NotificationBinding bindItem(T model) {
-        return new NotificationBinding();
+        NotificationBinding binding = new NotificationBinding(getContext(), getChannelId(), new Consumer<NotificationBinding>() {
+            @Override
+            public void accept(NotificationBinding binding) throws Exception {
+                notifyBinding(binding);
+            }
+        });
+
+        int id = _creator.createNotification(model, binding);
+
+        binding.setNotificationId(id);
+
+        notifyBinding(binding);
+
+        return binding;
     }
 
     @Override
