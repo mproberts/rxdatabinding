@@ -1,8 +1,13 @@
 package com.github.mproberts.rxdatabinding.notifications;
 
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
+import android.support.annotation.RequiresApi;
+import android.support.v4.app.NotificationManagerCompat;
 
 import com.github.mproberts.rxtools.list.Change;
 import com.github.mproberts.rxtools.list.FlowableList;
@@ -46,9 +51,20 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
         int createNotification(T model, NotificationBinding binding);
     }
 
+    private String _channelId;
+    private final NotificationManagerCompat _notificationManager;
+
     private CompositeDisposable _listSubscription = new CompositeDisposable();
     private FlowableList<T> _boundList = null;
     private List<NotificationBinding> _notificationBindings = new ArrayList<>();
+
+    public NotificationBindingHandler(Context context) {
+        _notificationManager = NotificationManagerCompat.from(context);
+
+        setupNotificationChannel(context);
+
+        // TODO: listen to something
+    }
 
     public void setList(FlowableList<T> list) {
         FlowableList<T> boundList = _boundList;
@@ -117,6 +133,26 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
                 public void onComplete() {
                 }
             });
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private NotificationChannel createNotificationChannel(String channelId, String name, int importance, String description) {
+        NotificationChannel notificationChannel = new NotificationChannel(channelId, name, importance);
+
+        notificationChannel.setDescription(description);
+
+        return notificationChannel;
+    }
+
+    private void setupNotificationChannel(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager notificationService = context.getSystemService(NotificationManager.class);
+
+            if (notificationService != null) {
+                NotificationChannel channel = createNotificationChannel(_channelId, "", NotificationManager.IMPORTANCE_DEFAULT, "");
+                notificationService.createNotificationChannel(channel);
+            }
         }
     }
 
