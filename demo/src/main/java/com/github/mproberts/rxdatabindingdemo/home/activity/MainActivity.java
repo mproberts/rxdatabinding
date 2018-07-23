@@ -1,5 +1,6 @@
 package com.github.mproberts.rxdatabindingdemo.home.activity;
 
+import android.content.Intent;
 import android.os.Bundle;
 
 import com.github.mproberts.rxdatabinding.notifications.NotificationBindingHandler;
@@ -14,6 +15,8 @@ import io.reactivex.functions.Action;
 
 public class MainActivity extends AndroidBindingMainActivity {
 
+    private NotificationBindingHandler<NotificationViewModel> _notifications;
+
     @Override
     protected int getLayoutResource() {
         return R.layout.activity_main;
@@ -27,17 +30,29 @@ public class MainActivity extends AndroidBindingMainActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+
+        _notifications.onReceive(this, getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+
+
+        _notifications.onReceive(this, intent);
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        NotificationBindingHandler<NotificationViewModel> notifications = new NotificationBindingHandler<>(
-                "com.github.mproberts.rxdatabindingdemo",
-                this);
+        _notifications = new NotificationBindingHandler<>("com.github.mproberts.rxdatabindingdemo", this);
         SimpleFlowableList<NotificationViewModel> demoList = new SimpleFlowableList<>();
 
         demoList.add(new NotificationViewModel(1, "Hello", "World"));
 
-        notifications.setCreator(new NotificationBindingHandler.NotificationCreator<NotificationViewModel>() {
+        _notifications.setCreator(new NotificationBindingHandler.NotificationCreator<NotificationViewModel>() {
             @Override
             public void createNotification(NotificationViewModel model, NotificationBindingHandler.NotificationBinding binding) {
                 binding.setNotificationId(model.notificationId());
@@ -58,7 +73,7 @@ public class MainActivity extends AndroidBindingMainActivity {
                 });
             }
         });
-        notifications.setList(demoList);
+        _notifications.setList(demoList);
     }
 
     @Override
