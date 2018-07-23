@@ -38,9 +38,9 @@ public class MainActivity extends AndroidBindingMainActivity {
         notifications.setCreator(new NotificationBindingHandler.NotificationCreator<NotificationViewModel>() {
             @Override
             public int createNotification(NotificationViewModel model, NotificationBindingHandler.NotificationBinding binding) {
-                binding.getBuilder().setSmallIcon(R.drawable.ic_notification);
                 binding.setContentTitle(model.title());
                 binding.setContentText(model.subtitle());
+                binding.getBuilder().setSmallIcon(R.drawable.ic_notification);
 
                 return model.notificationId();
             }

@@ -115,11 +115,6 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
             return _builder;
         }
 
-        private void setSilent() {
-            _builder.setVibrate(new long[0]);
-            _builder.setSound(null);
-        }
-
         private void invalidate() {
             if (_notificationId != INVALID_NOTIFICATION_ID) {
                 invalidateBinding(this);
@@ -142,7 +137,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
         }
 
         public void notified() {
-            setSilent();
+            _builder.setOnlyAlertOnce(true);
         }
     }
 
