@@ -7,6 +7,7 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Build;
 import android.support.annotation.DrawableRes;
 import android.support.annotation.RequiresApi;
@@ -272,6 +273,9 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
         _notificationManager = NotificationManagerCompat.from(context);
 
         setupNotificationChannel(context);
+
+        context.registerReceiver(this, new IntentFilter(getActionDismissId()));
+        context.registerReceiver(this, new IntentFilter(getActionModelEventId()));
     }
 
     public void setList(FlowableList<T> list) {
