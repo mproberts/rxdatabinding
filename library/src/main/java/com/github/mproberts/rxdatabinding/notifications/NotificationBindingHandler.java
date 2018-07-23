@@ -1,7 +1,9 @@
 package com.github.mproberts.rxdatabinding.notifications;
 
+import android.app.Activity;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -9,22 +11,21 @@ import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
-import android.telephony.SubscriptionManager;
 
 import com.github.mproberts.rxtools.list.Change;
 import com.github.mproberts.rxtools.list.FlowableList;
 import com.github.mproberts.rxtools.list.Update;
 import com.github.mproberts.rxtools.types.Optional;
 
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import io.reactivex.Flowable;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Action;
 import io.reactivex.functions.Consumer;
 import io.reactivex.functions.Function;
 
@@ -35,17 +36,25 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
     private static final String KEY_NOTIFICATION_ID = "com.kik.kikx.NOTIFICATION_ID";
     private static final String KEY_MAPPED_ACTION = "com.kik.kikx.MAPPED_ACTION";
 
-    public static final class NotificationBinding implements Disposable {
+    public interface NotificationBinding {
+
+        void setContentText(Flowable<String> text);
+
+        void setContentTitle(Flowable<String> title);
+
+        <U> void bind(Flowable<Optional<U>> source, final U ifEmpty, final Consumer<U> binding);
+
+        <U> void bind(Flowable<U> source, final Consumer<U> binding);
+
+        NotificationCompat.Builder getBuilder();
+    }
+
+    public final class BaseNotificationBinding implements NotificationBinding, Disposable {
 
         private final CompositeDisposable _localDisposable = new CompositeDisposable();
-        private final Consumer<NotificationBinding> _callback;
         private int _notificationId = INVALID_NOTIFICATION_ID;
-        private final NotificationCompat.Builder _builder;
-
-        private NotificationBinding(Context context, String channelId, Consumer<NotificationBinding> callback) {
-            _builder = new NotificationCompat.Builder(context, channelId);
-            _callback = callback;
-        }
+        private final NotificationCompat.Builder _builder = new NotificationCompat.Builder(getContext(), getChannelId());
+        private final Map<String, Action> _mappedActions = new HashMap<>();
 
         public void setContentTitle(Flowable<String> title) {
             bind(title, new Consumer<String>() {
@@ -113,15 +122,51 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
 
         private void invalidate() {
             if (_notificationId != INVALID_NOTIFICATION_ID) {
-                setSilent();
+                invalidateBinding(this);
+            }
+        }
 
+        private void invokeAction(String actionName) {
+            Action action = _mappedActions.get(actionName);
+
+            if (action != null) {
                 try {
-                    _callback.accept(this);
+                    action.run();
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
             }
         }
+
+        private void onNotificationDismissed() {
+        }
+
+        public void notified() {
+            setSilent();
+        }
+    }
+
+    private PendingIntent createDismissIntent(int notificationId) {
+        Intent intent = new Intent()
+                .addFlags(Intent.FLAG_FROM_BACKGROUND)
+                .addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES)
+                .setAction(getActionDismissId());
+
+        intent.putExtra(KEY_NOTIFICATION_ID, notificationId);
+
+        return PendingIntent.getBroadcast(getContext(), 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+    }
+
+    private PendingIntent createBoundActionIntent(int notificationId, Class<? extends Activity> activity, String actionName) {
+        Intent intent = new Intent(getContext(), activity)
+                .addFlags(Intent.FLAG_FROM_BACKGROUND)
+                .addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES)
+                .setAction(getActionModelEventId());
+
+        intent.putExtra(KEY_NOTIFICATION_ID, notificationId);
+        intent.putExtra(KEY_MAPPED_ACTION, actionName);
+
+        return PendingIntent.getActivity(getContext(), 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
     public interface NotificationCreator<T> {
@@ -133,11 +178,19 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
 
     private CompositeDisposable _listSubscription = new CompositeDisposable();
     private FlowableList<T> _boundList = null;
-    private List<NotificationBinding> _notificationBindings = new ArrayList<>();
+    private List<BaseNotificationBinding> _notificationBindings = new ArrayList<>();
 
     private NotificationCreator<T> _creator;
 
     private final Context _context;
+
+    private String getActionDismissId() {
+        return getChannelId() + ".ACTION_MESSAGE_DISMISS";
+    }
+
+    private String getActionModelEventId() {
+        return getChannelId() + ".ACTION_MODEL_EVENT";
+    }
 
     private Context getContext() {
         return _context;
@@ -168,28 +221,28 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
                     for (Change change : update.changes) {
                         switch (change.type) {
                             case Inserted: {
-                                NotificationBinding binding = bindItem(update.list.get(change.to));
+                                BaseNotificationBinding binding = bindItem(update.list.get(change.to));
                                 _notificationBindings.add(change.to, binding);
                                 break;
                             }
                             case Moved: {
-                                NotificationBinding moved = _notificationBindings.remove(change.from);
+                                BaseNotificationBinding moved = _notificationBindings.remove(change.from);
                                 _notificationBindings.add(change.to, moved);
                                 break;
                             }
                             case Reloaded: {
                                 _notificationManager.cancelAll();
 
-                                List<NotificationBinding> notificationBindings = _notificationBindings;
+                                List<BaseNotificationBinding> notificationBindings = _notificationBindings;
 
-                                List<NotificationBinding> reloadedNotificationBindings = new ArrayList<>();
+                                List<BaseNotificationBinding> reloadedNotificationBindings = new ArrayList<>();
 
-                                for (NotificationBinding binding : notificationBindings) {
+                                for (BaseNotificationBinding binding : notificationBindings) {
                                     binding.dispose();
                                 }
 
                                 for (T model : update.list) {
-                                    NotificationBinding binding = bindItem(model);
+                                    BaseNotificationBinding binding = bindItem(model);
 
                                     reloadedNotificationBindings.add(binding);
                                 }
@@ -199,7 +252,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
                                 break;
                             }
                             case Removed: {
-                                NotificationBinding removed = _notificationBindings.remove(change.from);
+                                BaseNotificationBinding removed = _notificationBindings.remove(change.from);
 
                                 removed.dispose();
                                 break;
@@ -231,25 +284,26 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
             NotificationManager notificationService = context.getSystemService(NotificationManager.class);
 
             if (notificationService != null) {
-                NotificationChannel channel = createNotificationChannel(_channelId, "Test", NotificationManager.IMPORTANCE_DEFAULT, "Something");
+                NotificationChannel channel = createNotificationChannel(getChannelId(), "Test", NotificationManager.IMPORTANCE_DEFAULT, "Something");
                 notificationService.createNotificationChannel(channel);
             }
         }
     }
 
-    private void notifyBinding(NotificationBinding binding) {
+    private void notifyBinding(BaseNotificationBinding binding) {
         NotificationCompat.Builder builder = binding.getBuilder();
 
         _notificationManager.notify(binding.getNotificationId(), builder.build());
+
+        binding.notified();
     }
 
-    private NotificationBinding bindItem(T model) {
-        NotificationBinding binding = new NotificationBinding(getContext(), getChannelId(), new Consumer<NotificationBinding>() {
-            @Override
-            public void accept(NotificationBinding binding) throws Exception {
-                notifyBinding(binding);
-            }
-        });
+    private void invalidateBinding(BaseNotificationBinding binding) {
+        notifyBinding(binding);
+    }
+
+    private BaseNotificationBinding bindItem(T model) {
+        BaseNotificationBinding binding = new BaseNotificationBinding();
 
         int id = _creator.createNotification(model, binding);
 
@@ -262,5 +316,40 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
+        if (intent == null) {
+            return;
+        }
+
+        String action = intent.getAction();
+
+        if (getActionDismissId().equals(action)) {
+            int notificationId = intent.getIntExtra(KEY_NOTIFICATION_ID, INVALID_NOTIFICATION_ID);
+
+            if (notificationId == INVALID_NOTIFICATION_ID) {
+                throw new IllegalStateException("Invalid notification ID provided");
+            }
+
+            for (BaseNotificationBinding binding : _notificationBindings) {
+                if (binding.getNotificationId() == notificationId) {
+                    binding.onNotificationDismissed();
+                    break;
+                }
+            }
+        }
+        else if (getActionModelEventId().equals(action)) {
+            int notificationId = intent.getIntExtra(KEY_NOTIFICATION_ID, INVALID_NOTIFICATION_ID);
+            String actionName = intent.getStringExtra(KEY_MAPPED_ACTION);
+
+            if (notificationId == INVALID_NOTIFICATION_ID) {
+                throw new IllegalStateException("Invalid notification ID provided");
+            }
+
+            for (BaseNotificationBinding binding : _notificationBindings) {
+                if (binding.getNotificationId() == notificationId) {
+                    binding.invokeAction(actionName);
+                    break;
+                }
+            }
+        }
     }
 }
