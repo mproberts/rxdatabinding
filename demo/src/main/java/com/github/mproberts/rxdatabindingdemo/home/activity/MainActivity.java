@@ -50,6 +50,12 @@ public class MainActivity extends AndroidBindingMainActivity {
                         model.onItemTapped();
                     }
                 });
+                binding.setOnDismissListener(new Action() {
+                    @Override
+                    public void run() throws Exception {
+                        model.onItemDismissed();
+                    }
+                });
             }
         });
         notifications.setList(demoList);

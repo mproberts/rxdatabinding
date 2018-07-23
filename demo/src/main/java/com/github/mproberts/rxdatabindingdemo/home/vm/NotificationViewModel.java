@@ -28,4 +28,7 @@ public class NotificationViewModel {
 
     public void onItemTapped() {
     }
+
+    public void onItemDismissed() {
+    }
 }
