@@ -8,6 +8,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
+import android.support.annotation.DrawableRes;
 import android.support.annotation.RequiresApi;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
@@ -33,8 +34,9 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
 
     private static final int INVALID_NOTIFICATION_ID = 0;
 
-    private static final String KEY_NOTIFICATION_ID = "com.kik.kikx.NOTIFICATION_ID";
-    private static final String KEY_MAPPED_ACTION = "com.kik.kikx.MAPPED_ACTION";
+    private static final String KEY_NOTIFICATION_ID = "com.github.mproberts.rxdatabinding.NOTIFICATION_ID";
+    private static final String KEY_MAPPED_ACTION = "com.github.mproberts.rxdatabinding.MAPPED_ACTION";
+    private static final String TAP_ACTION_NAME = "com.github.mproberts.rxdatabinding.TAP_ACTION";
 
     public interface NotificationBinding {
 
@@ -42,11 +44,19 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
 
         void setContentTitle(Flowable<String> title);
 
+        void setTapActionListener(Class<? extends Activity> activity, Action action);
+
+        void setOnDismissListener(Action dismissAction);
+
+        void addActionListener(Class<? extends Activity> activity, @DrawableRes int icon, String title, Action action);
+
         <U> void bind(Flowable<Optional<U>> source, final U ifEmpty, final Consumer<U> binding);
 
         <U> void bind(Flowable<U> source, final Consumer<U> binding);
 
         NotificationCompat.Builder getBuilder();
+
+        void setNotificationId(int notificationId);
     }
 
     public final class BaseNotificationBinding implements NotificationBinding, Disposable {
@@ -55,7 +65,10 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
         private int _notificationId = INVALID_NOTIFICATION_ID;
         private final NotificationCompat.Builder _builder = new NotificationCompat.Builder(getContext(), getChannelId());
         private final Map<String, Action> _mappedActions = new HashMap<>();
+        private Action _dismissAction;
+        private boolean _isReady = false;
 
+        @Override
         public void setContentTitle(Flowable<String> title) {
             bind(title, new Consumer<String>() {
                 @Override
@@ -65,6 +78,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
             });
         }
 
+        @Override
         public void setContentText(Flowable<String> text) {
             bind(text, new Consumer<String>() {
                 @Override
@@ -74,6 +88,38 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
             });
         }
 
+        @Override
+        public void setTapActionListener(Class<? extends Activity> activity, Action action) {
+            _mappedActions.put(TAP_ACTION_NAME, action);
+
+            PendingIntent pendingIntent = createPendingIntent(activity, TAP_ACTION_NAME);
+
+            _builder.setContentIntent(pendingIntent);
+        }
+
+        @Override
+        public void addActionListener(Class<? extends Activity> activity, @DrawableRes int icon, String title, Action action) {
+            _mappedActions.put(title, action);
+
+            PendingIntent pendingIntent = createPendingIntent(activity, title);
+
+            _builder.addAction(icon, title, pendingIntent);
+        }
+
+        @Override
+        public void setOnDismissListener(Action dismissAction) {
+            _dismissAction = dismissAction;
+        }
+
+        private PendingIntent createPendingIntent(Class<? extends Activity> activity, String actionName) {
+            if (_notificationId == INVALID_NOTIFICATION_ID) {
+                throw new IllegalStateException("Attempted to create pending intent before notification ID set");
+            }
+
+            return createBoundActionIntent(_notificationId, activity, actionName);
+        }
+
+        @Override
         public <U> void bind(Flowable<Optional<U>> source, final U ifEmpty, final Consumer<U> binding) {
             bind(source.map(new Function<Optional<U>, U>() {
                 @Override
@@ -83,6 +129,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
             }).startWith(ifEmpty), binding);
         }
 
+        @Override
         public <U> void bind(Flowable<U> source, final Consumer<U> binding) {
             _localDisposable.add(source.subscribe(new Consumer<U>() {
                 @Override
@@ -107,16 +154,31 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
             return _notificationId;
         }
 
-        private void setNotificationId(int notificationId) {
+        @Override
+        public void setNotificationId(int notificationId) {
             _notificationId = notificationId;
+
+            _builder.setDeleteIntent(createDismissIntent(notificationId));
         }
 
+        @Override
         public NotificationCompat.Builder getBuilder() {
             return _builder;
         }
 
+        void setup(T model) {
+            _creator.createNotification(model, this);
+            _isReady = true;
+
+            if (_notificationId == INVALID_NOTIFICATION_ID) {
+                throw new IllegalStateException("Notification ID not set before returning from creation method");
+            }
+
+            invalidateBinding(this);
+        }
+
         private void invalidate() {
-            if (_notificationId != INVALID_NOTIFICATION_ID) {
+            if (_notificationId != INVALID_NOTIFICATION_ID && _isReady) {
                 invalidateBinding(this);
             }
         }
@@ -134,9 +196,18 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
         }
 
         private void onNotificationDismissed() {
+            Action dismissAction = _dismissAction;
+
+            if (dismissAction != null) {
+                try {
+                    dismissAction.run();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
         }
 
-        public void notified() {
+        private void notified() {
             _builder.setOnlyAlertOnce(true);
         }
     }
@@ -165,7 +236,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
     }
 
     public interface NotificationCreator<T> {
-        int createNotification(T model, NotificationBinding binding);
+        void createNotification(T model, NotificationBinding binding);
     }
 
     private String _channelId;
@@ -300,11 +371,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
     private BaseNotificationBinding bindItem(T model) {
         BaseNotificationBinding binding = new BaseNotificationBinding();
 
-        int id = _creator.createNotification(model, binding);
-
-        binding.setNotificationId(id);
-
-        notifyBinding(binding);
+        binding.setup(model);
 
         return binding;
     }

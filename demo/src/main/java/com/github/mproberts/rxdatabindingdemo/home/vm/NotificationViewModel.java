@@ -25,4 +25,7 @@ public class NotificationViewModel {
     public Flowable<String> subtitle() {
         return Flowable.just(_subtitle);
     }
+
+    public void onItemTapped() {
+    }
 }

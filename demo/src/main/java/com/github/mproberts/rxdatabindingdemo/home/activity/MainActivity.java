@@ -10,6 +10,8 @@ import com.github.mproberts.rxdatabindingdemo.home.vm.HomeViewModel;
 import com.github.mproberts.rxdatabindingdemo.home.vm.NotificationViewModel;
 import com.github.mproberts.rxtools.list.SimpleFlowableList;
 
+import io.reactivex.functions.Action;
+
 public class MainActivity extends AndroidBindingMainActivity {
 
     @Override
@@ -37,12 +39,17 @@ public class MainActivity extends AndroidBindingMainActivity {
 
         notifications.setCreator(new NotificationBindingHandler.NotificationCreator<NotificationViewModel>() {
             @Override
-            public int createNotification(NotificationViewModel model, NotificationBindingHandler.NotificationBinding binding) {
+            public void createNotification(NotificationViewModel model, NotificationBindingHandler.NotificationBinding binding) {
+                binding.setNotificationId(model.notificationId());
                 binding.setContentTitle(model.title());
                 binding.setContentText(model.subtitle());
                 binding.getBuilder().setSmallIcon(R.drawable.ic_notification);
-
-                return model.notificationId();
+                binding.setTapActionListener(MainActivity.class, new Action() {
+                    @Override
+                    public void run() throws Exception {
+                        model.onItemTapped();
+                    }
+                });
             }
         });
         notifications.setList(demoList);
