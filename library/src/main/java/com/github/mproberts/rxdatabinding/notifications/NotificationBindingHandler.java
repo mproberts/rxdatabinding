@@ -155,6 +155,8 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
 
         @Override
         public void dispose() {
+            _notificationManager.cancel(_notificationId);
+
             _localDisposable.dispose();
         }
 
