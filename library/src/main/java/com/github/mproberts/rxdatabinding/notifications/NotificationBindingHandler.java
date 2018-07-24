@@ -55,6 +55,8 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
 
         <U> void bind(Flowable<U> source, final Consumer<U> binding);
 
+        void renotify();
+
         NotificationCompat.Builder getBuilder();
 
         void setNotificationId(int notificationId);
@@ -68,6 +70,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
         private final Map<String, Action> _mappedActions = new HashMap<>();
         private Action _dismissAction;
         private boolean _isReady = false;
+        private boolean _dismissed = false;
 
         @Override
         public void setContentTitle(Flowable<String> title) {
@@ -142,6 +145,15 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
         }
 
         @Override
+        public void renotify() {
+            _builder.setOnlyAlertOnce(false);
+
+            invalidate();
+
+            _builder.setOnlyAlertOnce(true);
+        }
+
+        @Override
         public void dispose() {
             _localDisposable.dispose();
         }
@@ -167,7 +179,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
             return _builder;
         }
 
-        void setup(T model) {
+        void setup(T model, boolean invalidateImmediately) {
             _creator.createNotification(model, this);
             _isReady = true;
 
@@ -175,11 +187,13 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
                 throw new IllegalStateException("Notification ID not set before returning from creation method");
             }
 
-            invalidateBinding(this);
+            if (invalidateImmediately) {
+                invalidateBinding(this);
+            }
         }
 
         private void invalidate() {
-            if (_notificationId != INVALID_NOTIFICATION_ID && _isReady) {
+            if (_notificationId != INVALID_NOTIFICATION_ID && _isReady && !_dismissed) {
                 invalidateBinding(this);
             }
         }
@@ -197,6 +211,8 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
         }
 
         private void onNotificationDismissed() {
+            _dismissed = true;
+
             Action dismissAction = _dismissAction;
 
             if (dismissAction != null) {
@@ -206,6 +222,8 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
                     throw new RuntimeException(e);
                 }
             }
+
+            dispose();
         }
 
         private void notified() {
@@ -248,6 +266,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
     private List<BaseNotificationBinding> _notificationBindings = new ArrayList<>();
 
     private NotificationCreator<T> _creator;
+    private boolean _clearOnReload = false;
 
     private final Context _context;
 
@@ -291,7 +310,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
                     for (Change change : update.changes) {
                         switch (change.type) {
                             case Inserted: {
-                                BaseNotificationBinding binding = bindItem(update.list.get(change.to));
+                                BaseNotificationBinding binding = bindItem(update.list.get(change.to), true);
                                 _notificationBindings.add(change.to, binding);
                                 break;
                             }
@@ -301,24 +320,23 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
                                 break;
                             }
                             case Reloaded: {
-                                _notificationManager.cancelAll();
+                                if (_clearOnReload) {
+                                    _notificationManager.cancelAll();
 
-                                List<BaseNotificationBinding> notificationBindings = _notificationBindings;
+                                    List<BaseNotificationBinding> notificationBindings = _notificationBindings;
 
-                                List<BaseNotificationBinding> reloadedNotificationBindings = new ArrayList<>();
+                                    for (BaseNotificationBinding binding : notificationBindings) {
+                                        binding.dispose();
+                                    }
 
-                                for (BaseNotificationBinding binding : notificationBindings) {
-                                    binding.dispose();
+                                    _notificationBindings = new ArrayList<>();
                                 }
 
                                 for (T model : update.list) {
-                                    BaseNotificationBinding binding = bindItem(model);
+                                    BaseNotificationBinding binding = bindItem(model, _clearOnReload);
 
-                                    reloadedNotificationBindings.add(binding);
+                                    _notificationBindings.add(binding);
                                 }
-
-                                _notificationBindings = reloadedNotificationBindings;
-
                                 break;
                             }
                             case Removed: {
@@ -333,6 +351,12 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
             });
 
             _listSubscription.add(subscription);
+        }
+    }
+
+    public void invalidateAll() {
+        for (BaseNotificationBinding binding : _notificationBindings) {
+            binding.invalidate();
         }
     }
 
@@ -372,10 +396,10 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
         notifyBinding(binding);
     }
 
-    private BaseNotificationBinding bindItem(T model) {
+    private BaseNotificationBinding bindItem(T model, boolean andNotify) {
         BaseNotificationBinding binding = new BaseNotificationBinding();
 
-        binding.setup(model);
+        binding.setup(model, andNotify);
 
         return binding;
     }
