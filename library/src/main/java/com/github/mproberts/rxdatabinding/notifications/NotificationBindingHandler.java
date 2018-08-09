@@ -38,6 +38,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
     private static final String KEY_NOTIFICATION_ID = "com.github.mproberts.rxdatabinding.NOTIFICATION_ID";
     private static final String KEY_MAPPED_ACTION = "com.github.mproberts.rxdatabinding.MAPPED_ACTION";
     private static final String TAP_ACTION_NAME = "com.github.mproberts.rxdatabinding.TAP_ACTION";
+    private boolean _listAttached = false;
 
     public interface NotificationBinding {
 
@@ -270,6 +271,8 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
     private NotificationCreator<T> _creator;
     private boolean _clearOnReload;
 
+    private List<Intent> _queuedIntents = new ArrayList<>();
+
     private final Context _context;
 
     private String getActionDismissId() {
@@ -359,6 +362,21 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
                             }
                         }
                     }
+
+                    boolean wasAttached = _listAttached;
+
+                    _listAttached = true;
+
+                    if (!wasAttached) {
+                        List<Intent> queuedIntents = _queuedIntents;
+
+                        _queuedIntents = new ArrayList<>();
+
+                        for (Intent queuedIntent : queuedIntents) {
+                            onReceive(_context, queuedIntent);
+                        }
+
+                    }
                 }
             });
 
@@ -419,6 +437,11 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         if (intent == null) {
+            return;
+        }
+
+        if (!_listAttached) {
+            _queuedIntents.add(intent);
             return;
         }
 
