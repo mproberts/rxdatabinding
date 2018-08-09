@@ -263,12 +263,12 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
     private String _channelId;
     private final NotificationManagerCompat _notificationManager;
 
-    private CompositeDisposable _listSubscription = new CompositeDisposable();
+    private Disposable _listSubscription;
     private FlowableList<T> _boundList = null;
     private List<BaseNotificationBinding> _notificationBindings = new ArrayList<>();
 
     private NotificationCreator<T> _creator;
-    private boolean _clearOnReload = false;
+    private boolean _clearOnReload;
 
     private final Context _context;
 
@@ -289,8 +289,13 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
     }
 
     public NotificationBindingHandler(String channelId, Context context) {
+        this(channelId, context, false);
+    }
+
+    public NotificationBindingHandler(String channelId, Context context, boolean clearOnReload) {
         _context = context;
         _channelId = channelId;
+        _clearOnReload = clearOnReload;
         _notificationManager = NotificationManagerCompat.from(context);
 
         setupNotificationChannel(context);
@@ -302,7 +307,12 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
     public void setList(FlowableList<T> list) {
         FlowableList<T> previousList = _boundList;
 
-        _listSubscription.dispose();
+        Disposable listSubscription = _listSubscription;
+
+        if (listSubscription != null) {
+            listSubscription.dispose();
+        }
+
         _boundList = list;
 
         if (list != null) {
@@ -352,7 +362,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
                 }
             });
 
-            _listSubscription.add(subscription);
+            _listSubscription = subscription;
         }
     }
 
