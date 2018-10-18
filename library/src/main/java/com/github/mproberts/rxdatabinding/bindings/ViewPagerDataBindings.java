@@ -31,7 +31,7 @@ public final class ViewPagerDataBindings {
     private ViewPagerDataBindings() {
     }
 
-    interface TabLayout {
+    public interface TabDelegate {
 
         class Tab {
             final View customView;
@@ -70,24 +70,24 @@ public final class ViewPagerDataBindings {
             }
         });
         viewPager.setAdapter(bindingPagerAdapter);
-        TabLayout tabLayout = (TabLayout) viewPager.getTag(PAGER_TAB_LAYOUT);
+        TabDelegate tabDelegate = (TabDelegate) viewPager.getTag(PAGER_TAB_LAYOUT);
 
-        if (tabLayout != null) {
-            bindingPagerAdapter.setTabLayout(tabLayout);
-            tabLayout.attachViewPager(viewPager);
+        if (tabDelegate != null) {
+            bindingPagerAdapter.setTabLayout(tabDelegate);
+            tabDelegate.attachViewPager(viewPager);
         }
 
         viewPager.setTag(PAGER_ADAPTER_TAG, bindingPagerAdapter);
     }
 
-    public static void associateTabLayout(ViewPager viewPager, TabLayout tabLayout) {
+    public static void associateTabLayout(ViewPager viewPager, TabDelegate tabDelegate) {
         BindingPagerAdapter bindingPagerAdapter = (BindingPagerAdapter) viewPager.getTag(PAGER_ADAPTER_TAG);
 
-        viewPager.setTag(PAGER_TAB_LAYOUT, tabLayout);
-        tabLayout.attachViewPager(viewPager);
+        viewPager.setTag(PAGER_TAB_LAYOUT, tabDelegate);
+        tabDelegate.attachViewPager(viewPager);
 
         if (bindingPagerAdapter != null) {
-            bindingPagerAdapter.setTabLayout(tabLayout);
+            bindingPagerAdapter.setTabLayout(tabDelegate);
         }
     }
 
@@ -231,18 +231,18 @@ public final class ViewPagerDataBindings {
         private ItemViewCreator _viewCreator;
         private List<?> _currentState;
         private Disposable _subscription;
-        private TabLayout _tabLayout;
+        private TabDelegate _tabDelegate;
 
         BindingPagerAdapter(ItemDataProvider dataProvider, ItemViewCreator viewCreator) {
             _dataProvider = dataProvider;
             _viewCreator = viewCreator;
         }
 
-        public void setTabLayout(TabLayout tabLayout) {
-            _tabLayout = tabLayout;
+        public void setTabLayout(TabDelegate tabDelegate) {
+            _tabDelegate = tabDelegate;
 
-            if (_tabLayout != null && _currentState != null) {
-                updateTabs(tabLayout.getContext(), _currentState);
+            if (_tabDelegate != null && _currentState != null) {
+                updateTabs(tabDelegate.getContext(), _currentState);
             }
         }
 
@@ -260,23 +260,23 @@ public final class ViewPagerDataBindings {
         }
 
         void updateTabs(Context context, List<?> list) {
-            if (_tabLayout != null) {
-                List<TabLayout.Tab> tabs = new ArrayList<>();
+            if (_tabDelegate != null) {
+                List<TabDelegate.Tab> tabs = new ArrayList<>();
 
                 for (int i = 0; i < list.size(); ++i) {
                     Object viewModel = list.get(i);
-                    TabLayout.Tab tab = createTab(context, viewModel);
+                    TabDelegate.Tab tab = createTab(context, viewModel);
 
                     if (tab != null) {
                         tabs.add(tab);
                     }
                 }
 
-                _tabLayout.updateTabs(tabs);
+                _tabDelegate.updateTabs(tabs);
             }
         }
 
-        public TabLayout.Tab createTab(Context context, Object viewModel) {
+        public TabDelegate.Tab createTab(Context context, Object viewModel) {
             LayoutInflater inflater = _cachedLayoutInflater;
 
             if (inflater == null) {
@@ -284,14 +284,14 @@ public final class ViewPagerDataBindings {
                 inflater = _cachedLayoutInflater;
             }
 
-            if (_tabLayout == null) {
+            if (_tabDelegate == null) {
                 return null;
             }
 
             Drawable icon = _viewCreator.tabIcon(context, viewModel);
             View customView = _viewCreator.createTabLayout(inflater, viewModel);
 
-            return new TabLayout.Tab(customView, icon, null);
+            return new TabDelegate.Tab(customView, icon, null);
         }
 
         @NonNull
