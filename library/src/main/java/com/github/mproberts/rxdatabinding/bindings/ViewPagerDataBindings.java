@@ -34,9 +34,9 @@ public final class ViewPagerDataBindings {
     public interface TabDelegate {
 
         class Tab {
-            final View customView;
-            final Drawable icon;
-            final Runnable clickListener;
+            public final View customView;
+            public final Drawable icon;
+            public final Runnable clickListener;
 
             public Tab(View customView, Drawable icon, Runnable clickListener) {
                 this.customView = customView;
