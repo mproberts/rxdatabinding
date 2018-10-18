@@ -224,7 +224,7 @@ public final class ViewPagerDataBindings {
             _tabLayout = tabLayout;
 
             if (_tabLayout != null && _currentState != null) {
-                updateTabs(tabLayout.getContext(), _currentState.list);
+                updateTabs(tabLayout.getContext(), _currentState);
             }
         }
 
