@@ -33,7 +33,9 @@ public class EditTextViewDataBindings {
         DataBindingTools.bindViewProperty(android.R.attr.text, new Consumer<String>() {
             @Override
             public void accept(String s) throws Exception {
-                view.setText(s);
+                if (view.getText() == null || !view.getText().toString().equals(s)) {
+                    view.setText(s);
+                }
             }
         }, view, newValue);
     }
