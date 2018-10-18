@@ -315,7 +315,7 @@ public final class ViewPagerDataBindings {
                         BindingPagerAdapter.this._currentState = update.list;
                         notifyDataSetChanged();
 
-                        updateTabs(container.getContext(), update.list);
+                        updateTabs(context, update.list);
                     }
                 });
             }
