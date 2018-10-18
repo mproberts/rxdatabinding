@@ -9,7 +9,6 @@ import android.graphics.drawable.Drawable;
 import android.support.annotation.DrawableRes;
 import android.support.annotation.LayoutRes;
 import android.support.annotation.NonNull;
-import android.support.design.widget.TabLayout;
 import android.support.v4.view.PagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.view.LayoutInflater;
@@ -23,12 +22,34 @@ import com.github.mproberts.rxtools.list.Update;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.functions.Consumer;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public final class ViewPagerDataBindings {
     private ViewPagerDataBindings() {
+    }
+
+    interface TabLayout {
+
+        class Tab {
+            final View customView;
+            final Drawable icon;
+            final Runnable clickListener;
+
+            public Tab(View customView, Drawable icon, Runnable clickListener) {
+                this.customView = customView;
+                this.icon = icon;
+                this.clickListener = clickListener;
+            }
+        }
+
+        Context getContext();
+
+        void updateTabs(List<Tab> tabs);
+
+        void attachViewPager(ViewPager viewPager);
     }
 
     private static final int PAGER_ADAPTER_TAG = "ViewPagerDataBindings.PAGER_ADAPTER_TAG".hashCode();
@@ -53,24 +74,21 @@ public final class ViewPagerDataBindings {
 
         if (tabLayout != null) {
             bindingPagerAdapter.setTabLayout(tabLayout);
-            tabLayout.setupWithViewPager(viewPager, true);
+            tabLayout.attachViewPager(viewPager);
         }
 
         viewPager.setTag(PAGER_ADAPTER_TAG, bindingPagerAdapter);
     }
 
-    @BindingAdapter({"tabLayout"})
-    public static void attachTabLayout(ViewPager viewPager, int tabLayoutId) {
+    public static void associateTabLayout(ViewPager viewPager, TabLayout tabLayout) {
         BindingPagerAdapter bindingPagerAdapter = (BindingPagerAdapter) viewPager.getTag(PAGER_ADAPTER_TAG);
-        TabLayout tabLayout = (TabLayout) viewPager.getRootView().findViewById(tabLayoutId);
+
+        viewPager.setTag(PAGER_TAB_LAYOUT, tabLayout);
+        tabLayout.attachViewPager(viewPager);
 
         if (bindingPagerAdapter != null) {
             bindingPagerAdapter.setTabLayout(tabLayout);
         }
-
-        viewPager.setTag(PAGER_TAB_LAYOUT, tabLayout);
-
-        tabLayout.setupWithViewPager(viewPager, true);
     }
 
     private static class BasicItemDataProvider implements BindingPagerAdapter.ItemDataProvider {
@@ -243,16 +261,22 @@ public final class ViewPagerDataBindings {
 
         void updateTabs(Context context, List<?> list) {
             if (_tabLayout != null) {
-                _tabLayout.removeAllTabs();
+                List<TabLayout.Tab> tabs = new ArrayList<>();
 
                 for (int i = 0; i < list.size(); ++i) {
                     Object viewModel = list.get(i);
-                    setupTab(context, i, viewModel);
+                    TabLayout.Tab tab = createTab(context, viewModel);
+
+                    if (tab != null) {
+                        tabs.add(tab);
+                    }
                 }
+
+                _tabLayout.updateTabs(tabs);
             }
         }
 
-        public void setupTab(Context context, int position, Object viewModel) {
+        public TabLayout.Tab createTab(Context context, Object viewModel) {
             LayoutInflater inflater = _cachedLayoutInflater;
 
             if (inflater == null) {
@@ -260,20 +284,14 @@ public final class ViewPagerDataBindings {
                 inflater = _cachedLayoutInflater;
             }
 
-            if (_tabLayout != null) {
-                TabLayout.Tab tab = _tabLayout.newTab();
-                Drawable icon = _viewCreator.tabIcon(context, viewModel);
-
-                if (icon != null) {
-                    tab.setIcon(icon);
-                }
-
-                if (icon == null) {
-                    tab.setCustomView(_viewCreator.createTabLayout(inflater, viewModel));
-                }
-
-                _tabLayout.addTab(tab, position);
+            if (_tabLayout == null) {
+                return null;
             }
+
+            Drawable icon = _viewCreator.tabIcon(context, viewModel);
+            View customView = _viewCreator.createTabLayout(inflater, viewModel);
+
+            return new TabLayout.Tab(customView, icon, null);
         }
 
         @NonNull
