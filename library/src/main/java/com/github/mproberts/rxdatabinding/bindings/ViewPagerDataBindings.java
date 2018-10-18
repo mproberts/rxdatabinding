@@ -36,11 +36,13 @@ public final class ViewPagerDataBindings {
         class Tab {
             public final View customView;
             public final Drawable icon;
+            public final boolean switchToTab;
             public final Runnable clickListener;
 
-            public Tab(View customView, Drawable icon, Runnable clickListener) {
+            public Tab(View customView, Drawable icon, boolean switchToTab, Runnable clickListener) {
                 this.customView = customView;
                 this.icon = icon;
+                this.switchToTab = switchToTab;
                 this.clickListener = clickListener;
             }
         }
@@ -110,12 +112,14 @@ public final class ViewPagerDataBindings {
         private final int _tabLayoutId;
         private final Drawable _tabIcon;
         private final int _tabIconId;
+        private final boolean _shouldSwitch;
 
-        public SimpleLayoutItemViewCreator(int itemLayoutId, int tabLayoutId, Drawable tabIcon, int tabIconId) {
+        public SimpleLayoutItemViewCreator(int itemLayoutId, int tabLayoutId, Drawable tabIcon, int tabIconId, boolean shouldSwitch) {
             _itemLayoutId = itemLayoutId;
             _tabLayoutId = tabLayoutId;
             _tabIcon = tabIcon;
             _tabIconId = tabIconId;
+            _shouldSwitch = shouldSwitch;
         }
 
         @Override
@@ -129,6 +133,11 @@ public final class ViewPagerDataBindings {
             binding.setVariable(BR.model, viewModel);
 
             return binding.getRoot();
+        }
+
+        @Override
+        public boolean shouldSwitchToTab(Object viewModel) {
+            return _shouldSwitch;
         }
 
         @Override
@@ -155,19 +164,25 @@ public final class ViewPagerDataBindings {
         private Map<Class<?>, BindingPagerAdapter.ItemViewCreator> _layouts = new HashMap();
 
         public TypedLayoutCreator addLayout(@LayoutRes int layoutId, @LayoutRes int tabLayoutId, Class<?> clazz) {
-            _layouts.put(clazz, new SimpleLayoutItemViewCreator(layoutId, tabLayoutId, null, 0));
+            _layouts.put(clazz, new SimpleLayoutItemViewCreator(layoutId, tabLayoutId, null, 0, true));
 
             return this;
         }
 
         public TypedLayoutCreator addLayoutWithIcon(@LayoutRes int layoutId, @DrawableRes int iconId, Class<?> clazz) {
-            _layouts.put(clazz, new SimpleLayoutItemViewCreator(layoutId, 0, null, iconId));
+            _layouts.put(clazz, new SimpleLayoutItemViewCreator(layoutId, 0, null, iconId, true));
+
+            return this;
+        }
+
+        public TypedLayoutCreator addLayoutWithIcon(@LayoutRes int layoutId, @DrawableRes int iconId, boolean shouldSwitchToTab, Class<?> clazz) {
+            _layouts.put(clazz, new SimpleLayoutItemViewCreator(layoutId, 0, null, iconId, shouldSwitchToTab));
 
             return this;
         }
 
         public TypedLayoutCreator addLayoutWithIcon(@LayoutRes int layoutId, Drawable icon, Class<?> clazz) {
-            _layouts.put(clazz, new SimpleLayoutItemViewCreator(layoutId, 0, icon, 0));
+            _layouts.put(clazz, new SimpleLayoutItemViewCreator(layoutId, 0, icon, 0, true));
 
             return this;
         }
@@ -177,6 +192,13 @@ public final class ViewPagerDataBindings {
             BindingPagerAdapter.ItemViewCreator itemLayoutCreator = getItemLayout(viewModel);
 
             return itemLayoutCreator.createTabLayout(inflater, viewModel);
+        }
+
+        @Override
+        public boolean shouldSwitchToTab(Object viewModel) {
+            BindingPagerAdapter.ItemViewCreator itemLayoutCreator = getItemLayout(viewModel);
+
+            return itemLayoutCreator.shouldSwitchToTab(viewModel);
         }
 
         @Override
@@ -224,6 +246,8 @@ public final class ViewPagerDataBindings {
 
         public interface ItemViewCreator {
             View createTabLayout(LayoutInflater inflater, Object viewModel);
+
+            boolean shouldSwitchToTab(Object viewModel);
 
             Drawable tabIcon(Context context, Object viewModel);
 
@@ -294,8 +318,9 @@ public final class ViewPagerDataBindings {
 
             Drawable icon = _viewCreator.tabIcon(context, viewModel);
             View customView = _viewCreator.createTabLayout(inflater, viewModel);
+            boolean switchToTab = _viewCreator.shouldSwitchToTab(viewModel);
 
-            return new TabDelegate.Tab(customView, icon, null);
+            return new TabDelegate.Tab(customView, icon, switchToTab, null);
         }
 
         @NonNull
