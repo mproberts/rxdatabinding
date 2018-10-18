@@ -120,6 +120,10 @@ public final class ViewPagerDataBindings {
 
         @Override
         public View createTabLayout(LayoutInflater inflater, Object viewModel) {
+            if (_tabLayoutId <= 0) {
+                return null;
+            }
+
             ViewDataBinding binding = DataBindingUtil.inflate(inflater, _tabLayoutId, null, false);
 
             binding.setVariable(BR.model, viewModel);
