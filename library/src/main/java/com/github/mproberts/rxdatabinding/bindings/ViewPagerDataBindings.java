@@ -314,17 +314,10 @@ public final class ViewPagerDataBindings {
                     public void accept(Update<?> update) throws Exception {
                         BindingPagerAdapter.this._currentState = update.list;
                         notifyDataSetChanged();
+
+                        updateTabs(container.getContext(), update.list);
                     }
                 });
-            }
-        }
-
-        @Override
-        public void finishUpdate(@NonNull ViewGroup container) {
-            super.finishUpdate(container);
-
-            if (_currentState != null) {
-                updateTabs(container.getContext(), _currentState);
             }
         }
     }
