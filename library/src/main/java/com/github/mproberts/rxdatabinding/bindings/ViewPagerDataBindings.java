@@ -194,7 +194,7 @@ public final class ViewPagerDataBindings {
         }
 
         public <T> TypedLayoutCreator addLayoutWithIcon(@LayoutRes int layoutId, @DrawableRes int iconId, boolean shouldSwitchToTab, Class<T> clazz, Consumer<T> onClick) {
-            _layouts.put(clazz, new SimpleLayoutItemViewCreator(layoutId, 0, null, iconId, shouldSwitchToTab, null));
+            _layouts.put(clazz, new SimpleLayoutItemViewCreator(layoutId, 0, null, iconId, shouldSwitchToTab, onClick));
 
             return this;
         }
