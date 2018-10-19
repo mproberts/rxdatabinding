@@ -151,10 +151,12 @@ public final class ViewPagerDataBindings {
                 @Override
                 @SuppressWarnings("unchecked")
                 public void run() {
-                    try {
-                        ((Consumer<Object>) _onClick).accept(viewModel);
-                    } catch (Exception e) {
-                        RxJavaPlugins.onError(e);
+                    if (_onClick != null) {
+                        try {
+                            ((Consumer<Object>) _onClick).accept(viewModel);
+                        } catch (Exception e) {
+                            RxJavaPlugins.onError(e);
+                        }
                     }
                 }
             });
@@ -191,7 +193,7 @@ public final class ViewPagerDataBindings {
             return this;
         }
 
-        public <T> TypedLayoutCreator addLayoutWithIcon(@LayoutRes int layoutId, @DrawableRes int iconId, boolean shouldSwitchToTab, Class<?> clazz, Consumer<T> onClick) {
+        public <T> TypedLayoutCreator addLayoutWithIcon(@LayoutRes int layoutId, @DrawableRes int iconId, boolean shouldSwitchToTab, Class<T> clazz, Consumer<T> onClick) {
             _layouts.put(clazz, new SimpleLayoutItemViewCreator(layoutId, 0, null, iconId, shouldSwitchToTab, null));
 
             return this;
