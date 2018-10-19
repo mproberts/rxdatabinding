@@ -21,6 +21,7 @@ import com.github.mproberts.rxtools.list.FlowableList;
 import com.github.mproberts.rxtools.list.Update;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.functions.Consumer;
+import io.reactivex.plugins.RxJavaPlugins;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -110,44 +111,53 @@ public final class ViewPagerDataBindings {
 
         private final int _itemLayoutId;
         private final int _tabLayoutId;
-        private final Drawable _tabIcon;
+        private Drawable _tabIcon;
         private final int _tabIconId;
         private final boolean _shouldSwitch;
+        private final Consumer<?> _onClick;
 
-        public SimpleLayoutItemViewCreator(int itemLayoutId, int tabLayoutId, Drawable tabIcon, int tabIconId, boolean shouldSwitch) {
+        public SimpleLayoutItemViewCreator(int itemLayoutId, int tabLayoutId, Drawable tabIcon, int tabIconId, boolean shouldSwitch, Consumer<?> onClick) {
             _itemLayoutId = itemLayoutId;
             _tabLayoutId = tabLayoutId;
             _tabIcon = tabIcon;
             _tabIconId = tabIconId;
             _shouldSwitch = shouldSwitch;
+            _onClick = onClick;
         }
 
-        @Override
-        public View createTabLayout(LayoutInflater inflater, Object viewModel) {
-            if (_tabLayoutId <= 0) {
-                return null;
-            }
-
-            ViewDataBinding binding = DataBindingUtil.inflate(inflater, _tabLayoutId, null, false);
-
-            binding.setVariable(BR.model, viewModel);
-
-            return binding.getRoot();
-        }
-
-        @Override
-        public boolean shouldSwitchToTab(Object viewModel) {
-            return _shouldSwitch;
-        }
-
-        @Override
-        public Drawable tabIcon(Context context, Object viewModel) {
+        private Drawable getTabIcon(Context context, Object viewModel) {
             if (_tabIcon == null) {
                 if (_tabIconId > 0) {
-                    return context.getResources().getDrawable(_tabIconId);
+                    _tabIcon = context.getResources().getDrawable(_tabIconId);
                 }
             }
             return _tabIcon;
+        }
+
+        @Override
+        public TabDelegate.Tab createTab(LayoutInflater inflater, Context context, final Object viewModel) {
+            View customView = null;
+            Drawable icon = getTabIcon(context, viewModel);
+
+            if (_tabLayoutId > 0) {
+                ViewDataBinding binding = DataBindingUtil.inflate(inflater, _tabLayoutId, null, false);
+
+                binding.setVariable(BR.model, viewModel);
+
+                customView = binding.getRoot();
+            }
+
+            return new TabDelegate.Tab(customView, icon, _shouldSwitch, new Runnable() {
+                @Override
+                @SuppressWarnings("unchecked")
+                public void run() {
+                    try {
+                        ((Consumer<Object>) _onClick).accept(viewModel);
+                    } catch (Exception e) {
+                        RxJavaPlugins.onError(e);
+                    }
+                }
+            });
         }
 
         @Override
@@ -164,48 +174,40 @@ public final class ViewPagerDataBindings {
         private Map<Class<?>, BindingPagerAdapter.ItemViewCreator> _layouts = new HashMap();
 
         public TypedLayoutCreator addLayout(@LayoutRes int layoutId, @LayoutRes int tabLayoutId, Class<?> clazz) {
-            _layouts.put(clazz, new SimpleLayoutItemViewCreator(layoutId, tabLayoutId, null, 0, true));
+            _layouts.put(clazz, new SimpleLayoutItemViewCreator(layoutId, tabLayoutId, null, 0, true, null));
 
             return this;
         }
 
         public TypedLayoutCreator addLayoutWithIcon(@LayoutRes int layoutId, @DrawableRes int iconId, Class<?> clazz) {
-            _layouts.put(clazz, new SimpleLayoutItemViewCreator(layoutId, 0, null, iconId, true));
+            _layouts.put(clazz, new SimpleLayoutItemViewCreator(layoutId, 0, null, iconId, true, null));
 
             return this;
         }
 
         public TypedLayoutCreator addLayoutWithIcon(@LayoutRes int layoutId, @DrawableRes int iconId, boolean shouldSwitchToTab, Class<?> clazz) {
-            _layouts.put(clazz, new SimpleLayoutItemViewCreator(layoutId, 0, null, iconId, shouldSwitchToTab));
+            _layouts.put(clazz, new SimpleLayoutItemViewCreator(layoutId, 0, null, iconId, shouldSwitchToTab, null));
+
+            return this;
+        }
+
+        public <T> TypedLayoutCreator addLayoutWithIcon(@LayoutRes int layoutId, @DrawableRes int iconId, boolean shouldSwitchToTab, Class<?> clazz, Consumer<T> onClick) {
+            _layouts.put(clazz, new SimpleLayoutItemViewCreator(layoutId, 0, null, iconId, shouldSwitchToTab, null));
 
             return this;
         }
 
         public TypedLayoutCreator addLayoutWithIcon(@LayoutRes int layoutId, Drawable icon, Class<?> clazz) {
-            _layouts.put(clazz, new SimpleLayoutItemViewCreator(layoutId, 0, icon, 0, true));
+            _layouts.put(clazz, new SimpleLayoutItemViewCreator(layoutId, 0, icon, 0, true, null));
 
             return this;
         }
 
         @Override
-        public View createTabLayout(LayoutInflater inflater, Object viewModel) {
+        public TabDelegate.Tab createTab(LayoutInflater inflater, Context context, Object viewModel) {
             BindingPagerAdapter.ItemViewCreator itemLayoutCreator = getItemLayout(viewModel);
 
-            return itemLayoutCreator.createTabLayout(inflater, viewModel);
-        }
-
-        @Override
-        public boolean shouldSwitchToTab(Object viewModel) {
-            BindingPagerAdapter.ItemViewCreator itemLayoutCreator = getItemLayout(viewModel);
-
-            return itemLayoutCreator.shouldSwitchToTab(viewModel);
-        }
-
-        @Override
-        public Drawable tabIcon(Context context, Object viewModel) {
-            BindingPagerAdapter.ItemViewCreator itemLayoutCreator = getItemLayout(viewModel);
-
-            return itemLayoutCreator.tabIcon(context, viewModel);
+            return itemLayoutCreator.createTab(inflater, context, viewModel);
         }
 
         @Override
@@ -245,11 +247,7 @@ public final class ViewPagerDataBindings {
         }
 
         public interface ItemViewCreator {
-            View createTabLayout(LayoutInflater inflater, Object viewModel);
-
-            boolean shouldSwitchToTab(Object viewModel);
-
-            Drawable tabIcon(Context context, Object viewModel);
+            TabDelegate.Tab createTab(LayoutInflater inflater, Context context, Object viewModel);
 
             View createItemLayout(LayoutInflater inflater, ViewGroup parent, Object viewModel);
         }
@@ -260,6 +258,13 @@ public final class ViewPagerDataBindings {
         private List<?> _currentState;
         private Disposable _subscription;
         private TabDelegate _tabDelegate;
+
+        private LayoutInflater getCachedLayoutInflater(Context context) {
+            if (_cachedLayoutInflater == null) {
+                _cachedLayoutInflater = LayoutInflater.from(context);
+            }
+            return _cachedLayoutInflater;
+        }
 
         BindingPagerAdapter(ItemDataProvider dataProvider, ItemViewCreator viewCreator) {
             _dataProvider = dataProvider;
@@ -305,22 +310,13 @@ public final class ViewPagerDataBindings {
         }
 
         public TabDelegate.Tab createTab(Context context, Object viewModel) {
-            LayoutInflater inflater = _cachedLayoutInflater;
-
-            if (inflater == null) {
-                _cachedLayoutInflater = LayoutInflater.from(context);
-                inflater = _cachedLayoutInflater;
-            }
-
             if (_tabDelegate == null) {
                 return null;
             }
 
-            Drawable icon = _viewCreator.tabIcon(context, viewModel);
-            View customView = _viewCreator.createTabLayout(inflater, viewModel);
-            boolean switchToTab = _viewCreator.shouldSwitchToTab(viewModel);
+            LayoutInflater inflater = getCachedLayoutInflater(context);
 
-            return new TabDelegate.Tab(customView, icon, switchToTab, null);
+            return _viewCreator.createTab(inflater, context, viewModel);
         }
 
         @NonNull
