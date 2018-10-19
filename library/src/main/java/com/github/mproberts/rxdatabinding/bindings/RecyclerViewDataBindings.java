@@ -1,5 +1,6 @@
 package com.github.mproberts.rxdatabinding.bindings;
 
+import android.content.Context;
 import android.databinding.BindingAdapter;
 import android.databinding.DataBindingUtil;
 import android.databinding.ViewDataBinding;
@@ -10,7 +11,6 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.github.mproberts.rxdatabinding.BR;
-import com.github.mproberts.rxdatabinding.R;
 import com.github.mproberts.rxdatabinding.tools.DataBindingTools;
 import com.github.mproberts.rxdatabinding.tools.UiThreadScheduler;
 import com.github.mproberts.rxtools.list.Change;
@@ -251,13 +251,22 @@ public final class RecyclerViewDataBindings {
             }
 
             public View bind(Object viewModel) {
-                // rebind the provided view
+                // rebind the provided viewCoordinatorLayout
                 ViewDataBinding binding = DataBindingUtil.getBinding(itemView);
                 binding.setVariable(BR.model, viewModel);
                 binding.executePendingBindings();
 
                 return itemView;
             }
+        }
+
+        private LayoutInflater _cachedLayoutInflater = null;
+
+        private LayoutInflater getCachedLayoutInflater(Context context) {
+            if (_cachedLayoutInflater == null) {
+                _cachedLayoutInflater = LayoutInflater.from(context);
+            }
+            return _cachedLayoutInflater;
         }
 
         private RecyclerViewAdapter(final FlowableList<?> list, ItemViewCreator viewCreator) {
@@ -339,7 +348,7 @@ public final class RecyclerViewDataBindings {
 
         @Override
         public RecyclerViewAdapter.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            LayoutInflater inflater = LayoutInflater.from(parent.getContext());
+            LayoutInflater inflater = getCachedLayoutInflater(parent.getContext());
 
             return (ViewHolder) _viewCreator.createItemLayout(inflater, parent, viewType);
         }
