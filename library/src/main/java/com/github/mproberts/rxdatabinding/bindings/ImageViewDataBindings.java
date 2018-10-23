@@ -33,6 +33,16 @@ public final class ImageViewDataBindings {
         }, view, newValue);
     }
 
+    @BindingAdapter(value = {"android:imageLevel", "adapter"})
+    public static void bindAndroidLevelListAdapter(final ImageView view, Flowable<Object> newValue, final LevelValueAdapter adapter) {
+        DataBindingTools.bindViewProperty(android.R.attr.drawable, new Consumer<Object>() {
+            @Override
+            public void accept(Object object) throws Exception {
+                view.setImageLevel(adapter.convertValue(object));
+            }
+        }, view, newValue);
+    }
+
     @BindingAdapter(value = {"data", "ifTrue", "ifFalse"})
     public static void bindAndroidDrawableBoolean(final ImageView view, Flowable<Boolean> newValue, final Drawable a, final Drawable b) {
         DataBindingTools.bindViewProperty(android.R.attr.drawable, new Consumer<Boolean>() {
