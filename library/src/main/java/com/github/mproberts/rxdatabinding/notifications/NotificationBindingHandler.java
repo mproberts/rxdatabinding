@@ -291,17 +291,17 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
         return _channelId;
     }
 
-    public NotificationBindingHandler(String channelId, Context context) {
-        this(channelId, context, false);
+    public NotificationBindingHandler(String channelId, String channelName, Context context) {
+        this(channelId, channelName, context, false);
     }
 
-    public NotificationBindingHandler(String channelId, Context context, boolean clearOnReload) {
+    public NotificationBindingHandler(String channelId, String channelName, Context context, boolean clearOnReload) {
         _context = context;
         _channelId = channelId;
         _clearOnReload = clearOnReload;
         _notificationManager = NotificationManagerCompat.from(context);
 
-        setupNotificationChannel(context);
+        setupNotificationChannel(channelName, context);
 
         context.registerReceiver(this, new IntentFilter(getActionDismissId()));
         context.registerReceiver(this, new IntentFilter(getActionModelEventId()));
@@ -403,12 +403,12 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
         return notificationChannel;
     }
 
-    private void setupNotificationChannel(Context context) {
+    private void setupNotificationChannel(String channelName, Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager notificationService = context.getSystemService(NotificationManager.class);
 
             if (notificationService != null) {
-                NotificationChannel channel = createNotificationChannel(getChannelId(), "Test", NotificationManager.IMPORTANCE_DEFAULT, "Something");
+                NotificationChannel channel = createNotificationChannel(getChannelId(), channelName, NotificationManager.IMPORTANCE_DEFAULT, "Something");
                 notificationService.createNotificationChannel(channel);
             }
         }
@@ -460,8 +460,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
                     break;
                 }
             }
-        }
-        else if (getActionModelEventId().equals(action)) {
+        } else if (getActionModelEventId().equals(action)) {
             int notificationId = intent.getIntExtra(KEY_NOTIFICATION_ID, INVALID_NOTIFICATION_ID);
             String actionName = intent.getStringExtra(KEY_MAPPED_ACTION);
 

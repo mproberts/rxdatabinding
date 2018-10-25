@@ -47,7 +47,7 @@ public class MainActivity extends AndroidBindingMainActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        _notifications = new NotificationBindingHandler<>("com.github.mproberts.rxdatabindingdemo", this);
+        _notifications = new NotificationBindingHandler<>("com.github.mproberts.rxdatabindingdemo", "Test", this);
         SimpleFlowableList<NotificationViewModel> demoList = new SimpleFlowableList<>();
 
         demoList.add(new NotificationViewModel(1, "Hello", "World"));
