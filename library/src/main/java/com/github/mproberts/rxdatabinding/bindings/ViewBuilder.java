@@ -17,11 +17,11 @@ public class ViewBuilder {
     private static final int TAG_DATABINDING_CREATOR
             = "com.github.mproberts.rxdatabinding.bindings.ViewBuilder".hashCode();
 
-    interface Matcher {
+    public interface Matcher {
         boolean matches(Object model);
     }
 
-    interface Creator {
+    public interface Creator {
         void bind(Context context, View view, Object model);
 
         View createView(Context context, LayoutInflater inflater, ViewGroup parent);
