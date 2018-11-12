@@ -54,7 +54,14 @@ public final class RecyclerViewDataBindings {
 
             @Override
             public Object createItemLayout(LayoutInflater inflater, ViewGroup parent, int layoutType) {
-                return viewBuilder.createView(inflater.getContext(), inflater, parent, layoutType);
+                return new ItemViewHolder(viewBuilder.createView(inflater.getContext(), inflater, parent, layoutType)) {
+                    @Override
+                    public View bind(Object viewModel) {
+                        viewBuilder.bind(itemView.getContext(), itemView, viewModel);
+
+                        return itemView;
+                    }
+                };
             }
         }));
     }
