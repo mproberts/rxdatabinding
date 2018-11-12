@@ -44,6 +44,21 @@ public final class RecyclerViewDataBindings {
         recyclerView.setAdapter(new RecyclerViewAdapter(list, layoutCreator));
     }
 
+    @BindingAdapter(value = {"data", "viewBuilder"})
+    public static void bindList(RecyclerView recyclerView, FlowableList<?> list, final ViewBuilder viewBuilder) {
+        recyclerView.setAdapter(new RecyclerViewAdapter(list, new RecyclerViewAdapter.ItemViewCreator() {
+            @Override
+            public int getItemLayoutType(Object viewModel) {
+                return viewBuilder.findMatch(viewModel);
+            }
+
+            @Override
+            public Object createItemLayout(LayoutInflater inflater, ViewGroup parent, int layoutType) {
+                return viewBuilder.createView(inflater.getContext(), inflater, parent, layoutType);
+            }
+        }));
+    }
+
     @BindingAdapter(value = {"layoutManager"})
     public static void bindListLayoutManager(RecyclerView recyclerView, LayoutManagerCreator managerCreator) {
         try {
