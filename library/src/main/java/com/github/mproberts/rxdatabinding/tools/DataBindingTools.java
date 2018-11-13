@@ -9,6 +9,7 @@ import android.view.ViewGroup;
 import android.view.ViewParent;
 
 import com.github.mproberts.rxdatabinding.internal.Lifecycle;
+import com.github.mproberts.rxdatabinding.internal.MutableLifecycle;
 import com.github.mproberts.rxdatabinding.internal.ViewBinding;
 import com.github.mproberts.rxdatabinding.internal.WindowAttachLifecycle;
 
@@ -97,7 +98,9 @@ public final class DataBindingTools {
         }
 
         if (observable != null) {
-            Lifecycle lifecycle = setupLifecycle(view);
+            MutableLifecycle lifecycle = setupLifecycle(view);
+
+            lifecycle.setActive(true);
 
             ViewBinding<T> binding = new ViewBinding<>(binder, observable, reset, lifecycle, onMain);
 
@@ -113,8 +116,8 @@ public final class DataBindingTools {
         }
     }
 
-    private static Lifecycle setupLifecycle(View view) {
-        Lifecycle lifecycle = (Lifecycle) view.getTag(TAG_LIFECYCLE);
+    private static MutableLifecycle setupLifecycle(View view) {
+        MutableLifecycle lifecycle = (MutableLifecycle) view.getTag(TAG_LIFECYCLE);
 
         if (lifecycle == null) {
             lifecycle = new WindowAttachLifecycle(view);
