@@ -5,6 +5,8 @@ import android.content.Context;
 import android.content.ContextWrapper;
 import android.support.annotation.AttrRes;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.ViewParent;
 
 import com.github.mproberts.rxdatabinding.internal.Lifecycle;
 import com.github.mproberts.rxdatabinding.internal.ViewBinding;
@@ -16,8 +18,8 @@ import io.reactivex.functions.Consumer;
 
 @SuppressWarnings("unused")
 public final class DataBindingTools {
-    private static final int TAG_PROPERTY_MASK = "DataBindingTools.PROPERTY".hashCode();
-    private static final int TAG_LIFECYCLE = "DataBindingTools.LIFECYCLE".hashCode();
+    public static final int TAG_PROPERTY_MASK = "DataBindingTools.PROPERTY".hashCode();
+    public static final int TAG_LIFECYCLE = "DataBindingTools.LIFECYCLE".hashCode();
     private static Consumer<Throwable> _exceptionHandler;
 
     private DataBindingTools() {
@@ -95,7 +97,8 @@ public final class DataBindingTools {
         }
 
         if (observable != null) {
-            WindowAttachLifecycle lifecycle = new WindowAttachLifecycle(view);
+            Lifecycle lifecycle = setupLifecycle(view);
+
             ViewBinding<T> binding = new ViewBinding<>(binder, observable, reset, lifecycle, onMain);
 
             view.setTag(bindingTagKey, binding);
@@ -108,6 +111,18 @@ public final class DataBindingTools {
                 handleError(e);
             }
         }
+    }
+
+    private static Lifecycle setupLifecycle(View view) {
+        Lifecycle lifecycle = (Lifecycle) view.getTag(TAG_LIFECYCLE);
+
+        if (lifecycle == null) {
+            lifecycle = new WindowAttachLifecycle(view);
+        }
+
+        view.setTag(TAG_LIFECYCLE, lifecycle);
+
+        return lifecycle;
     }
 
     public static void setExceptionHandler(Consumer<Throwable> handler) {

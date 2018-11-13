@@ -3,7 +3,7 @@ package com.github.mproberts.rxdatabinding.internal;
 import android.view.View;
 import android.view.View.OnAttachStateChangeListener;
 
-public class WindowAttachLifecycle extends Lifecycle implements OnAttachStateChangeListener {
+public class WindowAttachLifecycle extends MutableLifecycle implements OnAttachStateChangeListener {
     private final View _view;
 
     public WindowAttachLifecycle(View view) {
