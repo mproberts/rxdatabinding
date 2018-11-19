@@ -16,17 +16,17 @@ import java.util.Map;
 
 import io.reactivex.disposables.CompositeDisposable;
 
-public interface ViewBuilder {
-    int findType(Object model);
+public interface ViewBuilder<T> {
+    int findType(T model);
 
-    void bind(Context context, View view, Object model, int layoutType, CompositeDisposable lifecycle);
+    void bind(Context context, View view, T model, int layoutType, CompositeDisposable lifecycle);
 
     View create(Context context, LayoutInflater inflater, ViewGroup parent, int layoutType);
 
     boolean recycle(View view, int layoutType);
 
-    interface MatchingViewBuilder extends ViewBuilder {
-        boolean matches(Object model);
+    interface MatchingViewBuilder<T> extends ViewBuilder {
+        boolean matches(T model);
     }
 
     public static class Builder implements ViewBuilder {
@@ -114,8 +114,8 @@ public interface ViewBuilder {
             return this;
         }
 
-        public Builder cached(int cacheSize) {
-            return new CachingBuilder(_bindings, cacheSize);
+        public ViewBuilder cached(int cacheSize) {
+            return new CachingBuilder(this, cacheSize);
         }
     }
 
@@ -128,6 +128,14 @@ public interface ViewBuilder {
             _innerBinding = innerBinding;
         }
 
+        private int getInnerType(int layoutType) {
+            return layoutType & 0xff;
+        }
+
+        private int getOuterType(int layoutType) {
+            return (layoutType & ~0xff) >> 8;
+        }
+
         @Override
         public int findType(Object model) {
             int innerType = _innerBinding.findType(model);
@@ -138,17 +146,23 @@ public interface ViewBuilder {
 
         @Override
         public void bind(Context context, View view, Object model, int layoutType, CompositeDisposable lifecycle) {
-            super.bind(context, view, model, layoutType, lifecycle);
+            int outerType = getOuterType(layoutType);
+            int innerType = getInnerType(layoutType);
+
+            super.bind(context, view, model, outerType, lifecycle);
 
             View childView = (View) view.getTag(CHILD_BINDING_TAG);
 
-            _innerBinding.bind(context, childView, model, layoutType, lifecycle);
+            _innerBinding.bind(context, childView, model, innerType, lifecycle);
         }
 
         @Override
         public View create(Context context, LayoutInflater inflater, ViewGroup parent, int layoutType) {
-            ViewGroup wrapper = (ViewGroup) super.create(context, inflater, parent, layoutType);
-            View child = _innerBinding.create(context, inflater, wrapper, layoutType);
+            int outerType = getOuterType(layoutType);
+            int innerType = getInnerType(layoutType);
+
+            ViewGroup wrapper = (ViewGroup) super.create(context, inflater, parent, outerType);
+            View child = _innerBinding.create(context, inflater, wrapper, innerType);
 
             wrapper.addView(child);
             wrapper.setTag(CHILD_BINDING_TAG, child);
@@ -158,16 +172,21 @@ public interface ViewBuilder {
 
         @Override
         public boolean recycle(View view, int layoutType) {
+            int outerType = getOuterType(layoutType);
+            int innerType = getInnerType(layoutType);
+
             View childView = (View) view.getTag(CHILD_BINDING_TAG);
 
-            _innerBinding.recycle(childView, layoutType);
+            _innerBinding.recycle(childView, innerType);
 
-            return super.recycle(view, layoutType);
+            ((ViewGroup) view).removeView(childView);
+
+            return super.recycle(view, outerType);
         }
     }
 }
 
-class LayoutViewBuilder implements ViewBuilder {
+class LayoutViewBuilder<T> implements ViewBuilder<T> {
 
     private final int _layoutId;
 
@@ -176,12 +195,12 @@ class LayoutViewBuilder implements ViewBuilder {
     }
 
     @Override
-    public int findType(Object model) {
+    public int findType(T model) {
         return _layoutId;
     }
 
     @Override
-    public void bind(Context context, View view, Object model, int layoutType, CompositeDisposable lifecycle) {
+    public void bind(Context context, View view, T model, int layoutType, CompositeDisposable lifecycle) {
         ViewDataBinding binding = DataBindingUtil.getBinding(view);
         binding.setVariable(BR.model, model);
         binding.executePendingBindings();
@@ -198,36 +217,55 @@ class LayoutViewBuilder implements ViewBuilder {
     }
 }
 
-class CachingBuilder extends ViewBuilder.Builder {
+class CachingBuilder implements ViewBuilder {
 
+    private final ViewBuilder _innerBuilder;
     private final int _cacheSize;
-    private final Map<Integer, View> _cache = new HashMap<>();
+    private final Map<Integer, List<View>> _cache = new HashMap<>();
 
-    CachingBuilder(List<MatchingViewBuilder> bindings, int cacheSize) {
-        super(bindings);
-
+    CachingBuilder(ViewBuilder innerBuilder, int cacheSize) {
+        _innerBuilder = innerBuilder;
         _cacheSize = cacheSize;
     }
 
     @Override
+    public int findType(Object model) {
+        return _innerBuilder.findType(model);
+    }
+
+    @Override
+    public void bind(Context context, View view, Object model, int layoutType, CompositeDisposable lifecycle) {
+        _innerBuilder.bind(context, view, model, layoutType, lifecycle);
+    }
+
+    @Override
     public View create(Context context, LayoutInflater inflater, ViewGroup parent, int layoutType) {
-        if (_cache.size() > 0) {
-            return _cache.remove(0);
+        List<View> cachedViews = _cache.get(layoutType);
+
+        if (cachedViews != null && cachedViews.size() > 0) {
+            return cachedViews.remove(0);
         }
 
-        return super.create(context, inflater, parent, layoutType);
+        return _innerBuilder.create(context, inflater, parent, layoutType);
     }
 
     @Override
     public boolean recycle(View view, int layoutType) {
-        if (_cache.size() >= _cacheSize) {
+        List<View> cachedViews = _cache.get(layoutType);
+
+        if (cachedViews == null) {
+            cachedViews = new ArrayList<>();
+            _cache.put(layoutType, cachedViews);
+        }
+
+        if (cachedViews.size() >= _cacheSize) {
             return false;
         }
 
-        boolean recycled = super.recycle(view, layoutType);
+        boolean recycled = _innerBuilder.recycle(view, layoutType);
 
         if (recycled) {
-            _cache.put(layoutType, view);
+            cachedViews.add(view);
 
             return true;
         }
