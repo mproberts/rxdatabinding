@@ -1,8 +1,8 @@
 package com.github.mproberts.rxdatabinding.bindings;
 
-public abstract class AnyMatchingViewBinding implements ViewBinding.MatchingViewBinding {
+public abstract class AnyMatchingViewBuilder implements ViewBuilder.MatchingViewBuilder {
 
-    public AnyMatchingViewBinding() {
+    public AnyMatchingViewBuilder() {
     }
 
     @Override
