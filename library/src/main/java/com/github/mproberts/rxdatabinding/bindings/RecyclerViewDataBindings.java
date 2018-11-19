@@ -5,6 +5,7 @@ import android.databinding.BindingAdapter;
 import android.databinding.DataBindingUtil;
 import android.databinding.ViewDataBinding;
 import android.support.annotation.LayoutRes;
+import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
+import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.functions.Consumer;
 import io.reactivex.functions.Function;
@@ -44,20 +46,38 @@ public final class RecyclerViewDataBindings {
         recyclerView.setAdapter(new RecyclerViewAdapter(list, layoutCreator));
     }
 
-    @BindingAdapter(value = {"data", "viewBuilder"})
-    public static void bindList(RecyclerView recyclerView, FlowableList<?> list, final ViewBuilder viewBuilder) {
+    @BindingAdapter(value = {"data", "binding"})
+    public static void bindList(final RecyclerView recyclerView, FlowableList<?> list, final ViewBinding viewBinding) {
         recyclerView.setAdapter(new RecyclerViewAdapter(list, new RecyclerViewAdapter.ItemViewCreator() {
             @Override
+            public void bind(Object viewModel, RecyclerViewAdapter.ViewHolder holder) {
+                ItemViewHolder viewHolder = (ItemViewHolder) holder;
+
+                viewBinding.bind(recyclerView.getContext(), holder.itemView, viewModel, viewHolder.layoutType, viewHolder.disposable);
+            }
+
+            @Override
+            public void recycled(RecyclerViewAdapter.ViewHolder holder) {
+                super.recycled(holder);
+
+                ItemViewHolder viewHolder = (ItemViewHolder) holder;
+
+                viewBinding.recycle(holder.itemView, viewHolder.layoutType);
+            }
+
+            @Override
             public int getItemLayoutType(Object viewModel) {
-                return viewBuilder.findMatch(viewModel);
+                return viewBinding.findType(viewModel);
             }
 
             @Override
             public Object createItemLayout(LayoutInflater inflater, ViewGroup parent, int layoutType) {
-                return new ItemViewHolder(viewBuilder.createView(inflater.getContext(), inflater, parent, layoutType)) {
+                viewBinding.create(inflater.getContext(), inflater, parent, layoutType);
+
+                return new ItemViewHolder(viewBinding.create(inflater.getContext(), inflater, parent, layoutType), layoutType) {
                     @Override
-                    public View bind(Object viewModel) {
-                        viewBuilder.bind(itemView.getContext(), itemView, viewModel);
+                    public View bind(Object viewModel, int layoutType) {
+                        viewBinding.bind(itemView.getContext(), itemView, viewModel, layoutType, disposable);
 
                         return itemView;
                     }
@@ -91,7 +111,7 @@ public final class RecyclerViewDataBindings {
         public Object createItemLayout(LayoutInflater inflater, ViewGroup parent, int layoutType) {
             View contentView = DataBindingUtil.inflate(inflater, _layoutId, parent, false).getRoot();
 
-            return new ItemViewHolder(contentView);
+            return new ItemViewHolder(contentView, layoutType);
         }
     }
 
@@ -111,7 +131,7 @@ public final class RecyclerViewDataBindings {
         public final Object createItemLayout(LayoutInflater inflater, ViewGroup parent, int layoutType) {
             View contentView = DataBindingUtil.inflate(inflater, layoutType, parent, false).getRoot();
 
-            return new ItemViewHolder(contentView);
+            return new ItemViewHolder(contentView, layoutType);
         }
     }
 
@@ -142,7 +162,7 @@ public final class RecyclerViewDataBindings {
         public final Object createItemLayout(LayoutInflater inflater, ViewGroup parent, int layoutType) {
             View contentView = DataBindingUtil.inflate(inflater, layoutType, parent, false).getRoot();
 
-            return new ItemViewHolder(contentView);
+            return new ItemViewHolder(contentView, layoutType);
         }
     }
 
@@ -235,7 +255,7 @@ public final class RecyclerViewDataBindings {
         public Object createItemLayout(LayoutInflater inflater, ViewGroup parent, int layoutType) {
             View contentView = DataBindingUtil.inflate(inflater, layoutType, parent, false).getRoot();
 
-            return new ItemViewHolder(contentView);
+            return new ItemViewHolder(contentView, layoutType);
         }
     }
 
@@ -251,10 +271,15 @@ public final class RecyclerViewDataBindings {
         }
 
         public static abstract class ItemViewCreator<TViewHolder> {
+
             class ItemViewHolder extends ViewHolder {
 
-                public ItemViewHolder(View contentView) {
+                final int layoutType;
+                final CompositeDisposable disposable = new CompositeDisposable();
+
+                public ItemViewHolder(View contentView, int layoutType) {
                     super(contentView);
+                    this.layoutType = layoutType;
                 }
             }
 
@@ -263,7 +288,11 @@ public final class RecyclerViewDataBindings {
             public abstract TViewHolder createItemLayout(LayoutInflater inflater, ViewGroup parent, int layoutType);
 
             public void bind(Object viewModel, ViewHolder holder) {
-                holder.bind(viewModel);
+                holder.bind(viewModel, ((ItemViewHolder) holder).layoutType);
+            }
+
+            public void recycled(ViewHolder holder) {
+                ((ItemViewHolder) holder).disposable.dispose();
             }
         }
 
@@ -272,7 +301,7 @@ public final class RecyclerViewDataBindings {
                 super(itemView);
             }
 
-            public View bind(Object viewModel) {
+            public View bind(Object viewModel, int layoutId) {
                 // rebind the provided viewCoordinatorLayout
                 ViewDataBinding binding = DataBindingUtil.getBinding(itemView);
                 binding.setVariable(BR.model, viewModel);
@@ -379,7 +408,14 @@ public final class RecyclerViewDataBindings {
         public void onBindViewHolder(RecyclerViewAdapter.ViewHolder holder, int position) {
             Object model = _currentState.get(position);
 
-            holder.bind(model);
+            _viewCreator.bind(model, holder);
+        }
+
+        @Override
+        public void onViewRecycled(@NonNull ViewHolder holder) {
+            super.onViewRecycled(holder);
+
+            _viewCreator.recycled(holder);
         }
 
         @Override
