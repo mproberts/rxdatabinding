@@ -6,6 +6,7 @@ import android.databinding.ViewDataBinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 
 import com.github.mproberts.rxdatabinding.BR;
 
@@ -179,7 +180,11 @@ public interface ViewBuilder<T, TView extends View> {
 
             _innerBinding.recycle(childView, innerType);
 
-            ((ViewGroup) view).removeView(childView);
+//            ViewParent parent = childView.getParent();
+
+//            if (parent != null) {
+//                ((ViewGroup) parent).removeView(childView);
+//            }
 
             return super.recycle(view, outerType);
         }
