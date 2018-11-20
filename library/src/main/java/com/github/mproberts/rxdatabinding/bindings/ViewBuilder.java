@@ -16,16 +16,16 @@ import java.util.Map;
 
 import io.reactivex.disposables.CompositeDisposable;
 
-public interface ViewBuilder<T> {
+public interface ViewBuilder<T, TView extends View> {
     int findType(T model);
 
-    void bind(Context context, View view, T model, int layoutType, CompositeDisposable lifecycle);
+    void bind(Context context, TView view, T model, int layoutType, CompositeDisposable lifecycle);
 
     View create(Context context, LayoutInflater inflater, ViewGroup parent, int layoutType);
 
-    boolean recycle(View view, int layoutType);
+    boolean recycle(TView view, int layoutType);
 
-    interface MatchingViewBuilder<T> extends ViewBuilder {
+    interface MatchingViewBuilder<T, TView extends View> extends ViewBuilder<T, TView> {
         boolean matches(T model);
     }
 
@@ -186,7 +186,7 @@ public interface ViewBuilder<T> {
     }
 }
 
-class LayoutViewBuilder<T> implements ViewBuilder<T> {
+class LayoutViewBuilder<T, TView extends View> implements ViewBuilder<T, TView> {
 
     private final int _layoutId;
 
@@ -200,7 +200,7 @@ class LayoutViewBuilder<T> implements ViewBuilder<T> {
     }
 
     @Override
-    public void bind(Context context, View view, T model, int layoutType, CompositeDisposable lifecycle) {
+    public void bind(Context context, TView view, T model, int layoutType, CompositeDisposable lifecycle) {
         ViewDataBinding binding = DataBindingUtil.getBinding(view);
         binding.setVariable(BR.model, model);
         binding.executePendingBindings();
@@ -212,7 +212,7 @@ class LayoutViewBuilder<T> implements ViewBuilder<T> {
     }
 
     @Override
-    public boolean recycle(View view, int layoutType) {
+    public boolean recycle(TView view, int layoutType) {
         return false;
     }
 }
