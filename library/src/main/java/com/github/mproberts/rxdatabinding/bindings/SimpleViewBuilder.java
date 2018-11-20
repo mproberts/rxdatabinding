@@ -5,7 +5,7 @@ import android.view.View;
 
 import io.reactivex.disposables.CompositeDisposable;
 
-public abstract class SimpleViewBuilder<T, TView extends View> implements ViewBuilder<T, TView> {
+public abstract class SimpleViewBuilder<T, TView extends View> implements ViewBuilder.MatchingViewBuilder<T, TView> {
 
     @Override
     public int findType(T model) {
@@ -18,6 +18,11 @@ public abstract class SimpleViewBuilder<T, TView extends View> implements ViewBu
 
     @Override
     public boolean recycle(TView view, int layoutType) {
+        return true;
+    }
+
+    @Override
+    public boolean matches(T model) {
         return true;
     }
 }
