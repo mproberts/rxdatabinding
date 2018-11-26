@@ -3,7 +3,7 @@ package com.github.mproberts.rxdatabinding.tools;
 import android.app.Activity;
 import android.content.Context;
 import android.content.ContextWrapper;
-import android.support.annotation.AttrRes;
+import androidx.annotation.AttrRes;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;

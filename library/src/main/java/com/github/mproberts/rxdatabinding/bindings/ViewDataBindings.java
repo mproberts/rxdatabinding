@@ -1,7 +1,7 @@
 package com.github.mproberts.rxdatabinding.bindings;
 
-import android.databinding.BindingAdapter;
-import android.databinding.BindingConversion;
+import androidx.databinding.BindingAdapter;
+import androidx.databinding.BindingConversion;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LevelListDrawable;
 import android.text.Editable;

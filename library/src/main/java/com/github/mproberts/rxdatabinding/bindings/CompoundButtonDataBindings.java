@@ -1,6 +1,6 @@
 package com.github.mproberts.rxdatabinding.bindings;
 
-import android.databinding.BindingAdapter;
+import androidx.databinding.BindingAdapter;
 import android.widget.CompoundButton;
 
 import com.github.mproberts.rxdatabinding.tools.DataBindingTools;

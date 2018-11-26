@@ -1,12 +1,12 @@
 package com.github.mproberts.rxdatabinding.bindings;
 
 import android.content.Context;
-import android.databinding.BindingAdapter;
-import android.databinding.DataBindingUtil;
-import android.databinding.ViewDataBinding;
-import android.support.annotation.LayoutRes;
-import android.support.annotation.NonNull;
-import android.support.v7.widget.RecyclerView;
+import androidx.databinding.BindingAdapter;
+import androidx.databinding.DataBindingUtil;
+import androidx.databinding.ViewDataBinding;
+import androidx.annotation.LayoutRes;
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -416,6 +416,11 @@ public final class RecyclerViewDataBindings {
             super.onViewRecycled(holder);
 
             _viewCreator.recycled(holder);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull ViewHolder holder, int position, @NonNull List<Object> payloads) {
+            super.onBindViewHolder(holder, position, payloads);
         }
 
         @Override

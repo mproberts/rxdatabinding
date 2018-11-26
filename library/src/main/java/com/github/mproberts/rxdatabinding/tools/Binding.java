@@ -1,7 +1,7 @@
 package com.github.mproberts.rxdatabinding.tools;
 
-import android.support.annotation.Dimension;
-import android.support.annotation.StringRes;
+import androidx.annotation.Dimension;
+import androidx.annotation.StringRes;
 
 import com.github.mproberts.rxtools.types.Optional;
 

@@ -1,16 +1,16 @@
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 27
-    buildToolsVersion "27.0.0"
+    compileSdkVersion 28
+    buildToolsVersion "28.0.3"
 
     defaultConfig {
         minSdkVersion 16
-        targetSdkVersion 27
+        targetSdkVersion 28
         versionCode 1
         versionName "1.0"
 
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
     }
     dataBinding {
@@ -25,14 +25,14 @@ android {
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
-    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    androidTestImplementation('androidx.test.espresso:espresso-core:3.1.0-alpha4', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
-    compile 'com.android.support:appcompat-v7:27.1.+'
-    compile 'com.android.support:recyclerview-v7:27.1.+'
-    compile "io.reactivex.rxjava2:rxjava:2.1.2"
-    testCompile 'junit:junit:4.12'
-    compile 'com.android.support:support-annotations:27.0.0-alpha1'
-    provided 'com.github.mproberts:rxtools:0.5.2'
+    api 'androidx.appcompat:appcompat:1.0.2'
+    api 'androidx.recyclerview:recyclerview:1.0.0'
+    api "io.reactivex.rxjava2:rxjava:2.1.14"
+    testImplementation 'junit:junit:4.12'
+//    api 'androidx.annotation:annotation:1.0.0-beta01'
+    api 'com.github.mproberts:rxtools:0.5.2'
 }
