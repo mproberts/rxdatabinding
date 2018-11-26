@@ -14,6 +14,6 @@
     <declare-styleable name="RecyclerView">
         <attr name="itemLayout" format="reference" />
         <attr name="itemLayoutCreator" format="reference" />
-        <attr name="layoutManager" format="reference" />
+        <attr name="layoutManager" format="string" />
     </declare-styleable>
 </resources>
