@@ -1,6 +1,6 @@
 package com.github.mproberts.rxdatabinding.bindings;
 
-import android.databinding.BindingAdapter;
+import androidx.databinding.BindingAdapter;
 import android.graphics.drawable.Drawable;
 import android.widget.ImageView;
 
@@ -29,6 +29,16 @@ public final class ImageViewDataBindings {
             @Override
             public void accept(Boolean enabled) throws Exception {
                 view.setImageLevel(enabled ? 1 : 0);
+            }
+        }, view, newValue);
+    }
+
+    @BindingAdapter(value = {"android:imageLevel", "adapter"})
+    public static void bindAndroidLevelListAdapter(final ImageView view, Flowable<Object> newValue, final LevelValueAdapter adapter) {
+        DataBindingTools.bindViewProperty(android.R.attr.drawable, new Consumer<Object>() {
+            @Override
+            public void accept(Object object) throws Exception {
+                view.setImageLevel(adapter.convertValue(object));
             }
         }, view, newValue);
     }

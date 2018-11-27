@@ -1,9 +1,9 @@
 package com.github.mproberts.rxdatabindingdemo.storage;
 
-import android.arch.persistence.room.ColumnInfo;
-import android.arch.persistence.room.Entity;
-import android.arch.persistence.room.PrimaryKey;
-import android.support.annotation.NonNull;
+import androidx.room.ColumnInfo;
+import androidx.room.Entity;
+import androidx.room.PrimaryKey;
+import androidx.annotation.NonNull;
 
 import com.github.mproberts.rxdatabindingdemo.data.User;
 import com.github.mproberts.rxdatabindingdemo.data.UserId;
@@ -51,12 +51,12 @@ public class RoomUser implements User {
 
     public static class TypeConverters {
 
-        @android.arch.persistence.room.TypeConverter
+        @androidx.room.TypeConverter
         public static UserId convertToUserId(String id) {
             return new UserId(id);
         }
 
-        @android.arch.persistence.room.TypeConverter
+        @androidx.room.TypeConverter
         public static String convertFromUserId(UserId id) {
             return id.value;
         }

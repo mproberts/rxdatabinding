@@ -2,9 +2,9 @@ package com.github.mproberts.rxdatabinding.tools;
 
 import android.content.Context;
 import android.content.res.Resources;
-import android.databinding.BindingAdapter;
+import androidx.databinding.BindingAdapter;
 import android.os.Build;
-import android.support.annotation.StringRes;
+import androidx.annotation.StringRes;
 import android.widget.TextSwitcher;
 import android.widget.TextView;
 

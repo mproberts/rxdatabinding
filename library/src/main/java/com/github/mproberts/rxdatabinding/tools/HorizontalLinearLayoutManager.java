@@ -1,7 +1,7 @@
 package com.github.mproberts.rxdatabinding.tools;
 
 import android.content.Context;
-import android.support.v7.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import android.util.AttributeSet;
 
 public class HorizontalLinearLayoutManager extends LinearLayoutManager {

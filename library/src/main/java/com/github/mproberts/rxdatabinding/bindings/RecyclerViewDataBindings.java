@@ -1,16 +1,17 @@
 package com.github.mproberts.rxdatabinding.bindings;
 
-import android.databinding.BindingAdapter;
-import android.databinding.DataBindingUtil;
-import android.databinding.ViewDataBinding;
-import android.support.annotation.LayoutRes;
-import android.support.v7.widget.RecyclerView;
+import android.content.Context;
+import androidx.databinding.BindingAdapter;
+import androidx.databinding.DataBindingUtil;
+import androidx.databinding.ViewDataBinding;
+import androidx.annotation.LayoutRes;
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
 import com.github.mproberts.rxdatabinding.BR;
-import com.github.mproberts.rxdatabinding.R;
 import com.github.mproberts.rxdatabinding.tools.DataBindingTools;
 import com.github.mproberts.rxdatabinding.tools.UiThreadScheduler;
 import com.github.mproberts.rxtools.list.Change;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
+import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.functions.Consumer;
 import io.reactivex.functions.Function;
@@ -42,6 +44,46 @@ public final class RecyclerViewDataBindings {
     @BindingAdapter(value = {"data", "itemLayoutCreator"})
     public static void bindList(RecyclerView recyclerView, FlowableList<?> list, RecyclerViewAdapter.ItemViewCreator layoutCreator) {
         recyclerView.setAdapter(new RecyclerViewAdapter(list, layoutCreator));
+    }
+
+    @BindingAdapter(value = {"data", "builder"})
+    public static void bindList(final RecyclerView recyclerView, FlowableList<?> list, final ViewBuilder viewBuilder) {
+        recyclerView.setAdapter(new RecyclerViewAdapter(list, new RecyclerViewAdapter.ItemViewCreator() {
+            @Override
+            public void bind(Object viewModel, RecyclerViewAdapter.ViewHolder holder) {
+                ItemViewHolder viewHolder = (ItemViewHolder) holder;
+
+                viewBuilder.bind(recyclerView.getContext(), holder.itemView, viewModel, viewHolder.layoutType, viewHolder.disposable);
+            }
+
+            @Override
+            public void recycled(RecyclerViewAdapter.ViewHolder holder) {
+                super.recycled(holder);
+
+                ItemViewHolder viewHolder = (ItemViewHolder) holder;
+
+                viewBuilder.recycle(holder.itemView, viewHolder.layoutType);
+            }
+
+            @Override
+            public int getItemLayoutType(Object viewModel) {
+                return viewBuilder.findType(viewModel);
+            }
+
+            @Override
+            public Object createItemLayout(LayoutInflater inflater, ViewGroup parent, int layoutType) {
+                viewBuilder.create(inflater.getContext(), inflater, parent, layoutType);
+
+                return new ItemViewHolder(viewBuilder.create(inflater.getContext(), inflater, parent, layoutType), layoutType) {
+                    @Override
+                    public View bind(Object viewModel, int layoutType) {
+                        viewBuilder.bind(itemView.getContext(), itemView, viewModel, layoutType, disposable);
+
+                        return itemView;
+                    }
+                };
+            }
+        }));
     }
 
     @BindingAdapter(value = {"layoutManager"})
@@ -69,7 +111,7 @@ public final class RecyclerViewDataBindings {
         public Object createItemLayout(LayoutInflater inflater, ViewGroup parent, int layoutType) {
             View contentView = DataBindingUtil.inflate(inflater, _layoutId, parent, false).getRoot();
 
-            return new ItemViewHolder(contentView);
+            return new ItemViewHolder(contentView, layoutType);
         }
     }
 
@@ -89,7 +131,7 @@ public final class RecyclerViewDataBindings {
         public final Object createItemLayout(LayoutInflater inflater, ViewGroup parent, int layoutType) {
             View contentView = DataBindingUtil.inflate(inflater, layoutType, parent, false).getRoot();
 
-            return new ItemViewHolder(contentView);
+            return new ItemViewHolder(contentView, layoutType);
         }
     }
 
@@ -120,7 +162,7 @@ public final class RecyclerViewDataBindings {
         public final Object createItemLayout(LayoutInflater inflater, ViewGroup parent, int layoutType) {
             View contentView = DataBindingUtil.inflate(inflater, layoutType, parent, false).getRoot();
 
-            return new ItemViewHolder(contentView);
+            return new ItemViewHolder(contentView, layoutType);
         }
     }
 
@@ -213,7 +255,7 @@ public final class RecyclerViewDataBindings {
         public Object createItemLayout(LayoutInflater inflater, ViewGroup parent, int layoutType) {
             View contentView = DataBindingUtil.inflate(inflater, layoutType, parent, false).getRoot();
 
-            return new ItemViewHolder(contentView);
+            return new ItemViewHolder(contentView, layoutType);
         }
     }
 
@@ -229,10 +271,15 @@ public final class RecyclerViewDataBindings {
         }
 
         public static abstract class ItemViewCreator<TViewHolder> {
+
             class ItemViewHolder extends ViewHolder {
 
-                public ItemViewHolder(View contentView) {
+                final int layoutType;
+                final CompositeDisposable disposable = new CompositeDisposable();
+
+                public ItemViewHolder(View contentView, int layoutType) {
                     super(contentView);
+                    this.layoutType = layoutType;
                 }
             }
 
@@ -241,7 +288,11 @@ public final class RecyclerViewDataBindings {
             public abstract TViewHolder createItemLayout(LayoutInflater inflater, ViewGroup parent, int layoutType);
 
             public void bind(Object viewModel, ViewHolder holder) {
-                holder.bind(viewModel);
+                holder.bind(viewModel, ((ItemViewHolder) holder).layoutType);
+            }
+
+            public void recycled(ViewHolder holder) {
+                ((ItemViewHolder) holder).disposable.dispose();
             }
         }
 
@@ -250,14 +301,23 @@ public final class RecyclerViewDataBindings {
                 super(itemView);
             }
 
-            public View bind(Object viewModel) {
-                // rebind the provided view
+            public View bind(Object viewModel, int layoutId) {
+                // rebind the provided viewCoordinatorLayout
                 ViewDataBinding binding = DataBindingUtil.getBinding(itemView);
                 binding.setVariable(BR.model, viewModel);
                 binding.executePendingBindings();
 
                 return itemView;
             }
+        }
+
+        private LayoutInflater _cachedLayoutInflater = null;
+
+        private LayoutInflater getCachedLayoutInflater(Context context) {
+            if (_cachedLayoutInflater == null) {
+                _cachedLayoutInflater = LayoutInflater.from(context);
+            }
+            return _cachedLayoutInflater;
         }
 
         private RecyclerViewAdapter(final FlowableList<?> list, ItemViewCreator viewCreator) {
@@ -339,7 +399,7 @@ public final class RecyclerViewDataBindings {
 
         @Override
         public RecyclerViewAdapter.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            LayoutInflater inflater = LayoutInflater.from(parent.getContext());
+            LayoutInflater inflater = getCachedLayoutInflater(parent.getContext());
 
             return (ViewHolder) _viewCreator.createItemLayout(inflater, parent, viewType);
         }
@@ -348,7 +408,19 @@ public final class RecyclerViewDataBindings {
         public void onBindViewHolder(RecyclerViewAdapter.ViewHolder holder, int position) {
             Object model = _currentState.get(position);
 
-            holder.bind(model);
+            _viewCreator.bind(model, holder);
+        }
+
+        @Override
+        public void onViewRecycled(@NonNull ViewHolder holder) {
+            super.onViewRecycled(holder);
+
+            _viewCreator.recycled(holder);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull ViewHolder holder, int position, @NonNull List<Object> payloads) {
+            super.onBindViewHolder(holder, position, payloads);
         }
 
         @Override

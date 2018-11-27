@@ -11,15 +11,15 @@ retrolambda {
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 26
-    buildToolsVersion "26.0.0"
+    compileSdkVersion 28
+    buildToolsVersion "28.0.3"
     defaultConfig {
         applicationId "com.github.mproberts.rxdatabindingdemo"
         minSdkVersion 16
-        targetSdkVersion 26
+        targetSdkVersion 28
         versionCode 1
         versionName "1.0"
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     dataBinding {
         enabled true
@@ -37,24 +37,23 @@ android {
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
-    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    androidTestImplementation('androidx.test.espresso:espresso-core:3.1.0-alpha4', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
-    compile "android.arch.persistence.room:runtime:1.0.0-rc1"
-    compile "android.arch.persistence.room:rxjava2:1.0.0-rc1"
-    annotationProcessor "android.arch.persistence.room:compiler:1.0.0-rc1"
-    androidTestCompile "android.arch.persistence.room:testing:1.0.0-rc1"
-    compile project(':library')
-    compile 'com.android.support:appcompat-v7:26.1.0'
-    compile 'com.android.support:design:26.1.0'
-    compile 'com.android.support.constraint:constraint-layout:1.0.2'
-    compile "com.google.dagger:dagger:2.12"
-    annotationProcessor "com.github.bumptech.glide:compiler:4.2.0"
-    compile "com.github.bumptech.glide:glide:4.2.0"
-    annotationProcessor "com.google.dagger:dagger-compiler:2.12"
-    compile 'com.github.mproberts.navigator:annotations:e3d05b495c'
-    compile 'com.github.mproberts:rxtools:0.5.2'
+    implementation 'androidx.room:room-runtime:2.1.0-alpha02'
+    implementation 'androidx.room:room-rxjava2:2.1.0-alpha02'
+    annotationProcessor 'androidx.room:room-compiler:2.1.0-alpha02'
+    androidTestImplementation 'androidx.room:room-testing:2.1.0-alpha02'
+    implementation project(':library')
+    implementation 'androidx.appcompat:appcompat:1.0.2'
+    implementation 'com.google.android.material:material:1.1.0-alpha01'
+    implementation "com.google.dagger:dagger:2.18"
+    annotationProcessor "com.github.bumptech.glide:compiler:4.7.1"
+    implementation "com.github.bumptech.glide:glide:4.7.1"
+    annotationProcessor "com.google.dagger:dagger-compiler:2.18"
+    implementation 'com.github.mproberts.navigator:annotations:e3d05b495c'
+    implementation 'com.github.mproberts:rxtools:0.5.2'
     annotationProcessor 'com.github.mproberts.navigator:processor:e3d05b495c'
-    testCompile 'junit:junit:4.12'
+    testImplementation 'junit:junit:4.12'
 }
