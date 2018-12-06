@@ -6,7 +6,6 @@ import androidx.databinding.ViewDataBinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewParent;
 
 import com.github.mproberts.rxdatabinding.BR;
 
@@ -17,7 +16,7 @@ import java.util.Map;
 
 import io.reactivex.disposables.CompositeDisposable;
 
-public interface ViewBuilder<T, TView extends View> {
+public interface ViewCreator<T, TView extends View> {
     int findType(T model);
 
     void bind(Context context, TView view, T model, int layoutType, CompositeDisposable lifecycle);
@@ -26,26 +25,26 @@ public interface ViewBuilder<T, TView extends View> {
 
     boolean recycle(TView view, int layoutType);
 
-    interface MatchingViewBuilder<T, TView extends View> extends ViewBuilder<T, TView> {
+    interface MatchingViewCreator<T, TView extends View> extends ViewCreator<T, TView> {
         boolean matches(T model);
     }
 
-    public static class Builder implements ViewBuilder {
+    public static class Creator implements ViewCreator {
 
-        private List<MatchingViewBuilder> _bindings = new ArrayList<>();
+        private List<MatchingViewCreator> _bindings = new ArrayList<>();
 
-        private static final int BINDING_INDEX_TAG = "Builder.BINDING_INDEX_TAG".hashCode();
+        private static final int BINDING_INDEX_TAG = "Creator.BINDING_INDEX_TAG".hashCode();
 
-        public Builder() {
+        public Creator() {
         }
 
-        protected Builder(List<MatchingViewBuilder> bindings) {
+        protected Creator(List<MatchingViewCreator> bindings) {
             _bindings.addAll(bindings);
         }
 
         protected int find(Object model) {
             for (int i = 0, s = _bindings.size(); i < s; ++i) {
-                MatchingViewBuilder viewBinding = _bindings.get(i);
+                MatchingViewCreator viewBinding = _bindings.get(i);
 
                 if (viewBinding.matches(model)) {
                     return i;
@@ -62,14 +61,14 @@ public interface ViewBuilder<T, TView extends View> {
 
         @Override
         public void bind(Context context, View view, Object model, int layoutType, CompositeDisposable lifecycle) {
-            MatchingViewBuilder binding = _bindings.get(layoutType);
+            MatchingViewCreator binding = _bindings.get(layoutType);
 
             binding.bind(context, view, model, layoutType, lifecycle);
         }
 
         @Override
         public View create(Context context, LayoutInflater inflater, ViewGroup parent, int layoutType) {
-            MatchingViewBuilder binding = _bindings.get(layoutType);
+            MatchingViewCreator binding = _bindings.get(layoutType);
 
             View view = binding.create(context, inflater, parent, layoutType);
 
@@ -78,19 +77,19 @@ public interface ViewBuilder<T, TView extends View> {
 
         @Override
         public boolean recycle(View view, int layoutType) {
-            MatchingViewBuilder binding = _bindings.get(layoutType);
+            MatchingViewCreator binding = _bindings.get(layoutType);
 
             return binding.recycle(view, layoutType);
         }
 
-        public Builder add(MatchingViewBuilder binding) {
+        public Creator add(MatchingViewCreator binding) {
             _bindings.add(binding);
 
             return this;
         }
 
-        public <T> Builder add(Class<T> clzz, final ViewBuilder binding) {
-            _bindings.add(new TypeMatchingViewBuilder<T>(clzz) {
+        public <T> Creator add(Class<T> clzz, final ViewCreator binding) {
+            _bindings.add(new TypeMatchingViewCreator<T>(clzz) {
                 @Override
                 public int findType(Object model) {
                     return binding.findType(model);
@@ -115,17 +114,17 @@ public interface ViewBuilder<T, TView extends View> {
             return this;
         }
 
-        public ViewBuilder cached(int cacheSize) {
-            return new CachingBuilder(this, cacheSize);
+        public ViewCreator cached(int cacheSize) {
+            return new CachingCreator(this, cacheSize);
         }
     }
 
-    public static class CompositeBuilder extends ViewBuilder.Builder {
-        private final ViewBuilder _innerBinding;
+    public static class CompositeCreator extends Creator {
+        private final ViewCreator _innerBinding;
 
-        private static final int CHILD_BINDING_TAG = "Builder.CHILD_BINDING_TAG".hashCode();
+        private static final int CHILD_BINDING_TAG = "Creator.CHILD_BINDING_TAG".hashCode();
 
-        public CompositeBuilder(ViewBuilder innerBinding) {
+        public CompositeCreator(ViewCreator innerBinding) {
             _innerBinding = innerBinding;
         }
 
@@ -191,11 +190,11 @@ public interface ViewBuilder<T, TView extends View> {
     }
 }
 
-class LayoutViewBuilder<T, TView extends View> implements ViewBuilder<T, TView> {
+class LayoutViewCreator<T, TView extends View> implements ViewCreator<T, TView> {
 
     private final int _layoutId;
 
-    LayoutViewBuilder(int layoutId) {
+    LayoutViewCreator(int layoutId) {
         _layoutId = layoutId;
     }
 
@@ -222,13 +221,13 @@ class LayoutViewBuilder<T, TView extends View> implements ViewBuilder<T, TView> 
     }
 }
 
-class CachingBuilder implements ViewBuilder {
+class CachingCreator implements ViewCreator {
 
-    private final ViewBuilder _innerBuilder;
+    private final ViewCreator _innerBuilder;
     private final int _cacheSize;
     private final Map<Integer, List<View>> _cache = new HashMap<>();
 
-    CachingBuilder(ViewBuilder innerBuilder, int cacheSize) {
+    CachingCreator(ViewCreator innerBuilder, int cacheSize) {
         _innerBuilder = innerBuilder;
         _cacheSize = cacheSize;
     }

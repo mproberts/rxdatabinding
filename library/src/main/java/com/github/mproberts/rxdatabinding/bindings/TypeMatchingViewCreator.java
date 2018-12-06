@@ -1,10 +1,10 @@
 package com.github.mproberts.rxdatabinding.bindings;
 
-public abstract class TypeMatchingViewBuilder<T> implements ViewBuilder.MatchingViewBuilder {
+public abstract class TypeMatchingViewCreator<T> implements ViewCreator.MatchingViewCreator {
 
     private final Class<T> _clzz;
 
-    public TypeMatchingViewBuilder(Class<T> clzz) {
+    public TypeMatchingViewCreator(Class<T> clzz) {
         _clzz = clzz;
     }
 

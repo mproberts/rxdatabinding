@@ -47,13 +47,13 @@ public final class RecyclerViewDataBindings {
     }
 
     @BindingAdapter(value = {"data", "builder"})
-    public static void bindList(final RecyclerView recyclerView, FlowableList<?> list, final ViewBuilder viewBuilder) {
+    public static void bindList(final RecyclerView recyclerView, FlowableList<?> list, final ViewCreator viewCreator) {
         recyclerView.setAdapter(new RecyclerViewAdapter(list, new RecyclerViewAdapter.ItemViewCreator() {
             @Override
             public void bind(Object viewModel, RecyclerViewAdapter.ViewHolder holder) {
                 ItemViewHolder viewHolder = (ItemViewHolder) holder;
 
-                viewBuilder.bind(recyclerView.getContext(), holder.itemView, viewModel, viewHolder.layoutType, viewHolder.disposable);
+                viewCreator.bind(recyclerView.getContext(), holder.itemView, viewModel, viewHolder.layoutType, viewHolder.disposable);
             }
 
             @Override
@@ -62,22 +62,22 @@ public final class RecyclerViewDataBindings {
 
                 ItemViewHolder viewHolder = (ItemViewHolder) holder;
 
-                viewBuilder.recycle(holder.itemView, viewHolder.layoutType);
+                viewCreator.recycle(holder.itemView, viewHolder.layoutType);
             }
 
             @Override
             public int getItemLayoutType(Object viewModel) {
-                return viewBuilder.findType(viewModel);
+                return viewCreator.findType(viewModel);
             }
 
             @Override
             public Object createItemLayout(LayoutInflater inflater, ViewGroup parent, int layoutType) {
-                viewBuilder.create(inflater.getContext(), inflater, parent, layoutType);
+                viewCreator.create(inflater.getContext(), inflater, parent, layoutType);
 
-                return new ItemViewHolder(viewBuilder.create(inflater.getContext(), inflater, parent, layoutType), layoutType) {
+                return new ItemViewHolder(viewCreator.create(inflater.getContext(), inflater, parent, layoutType), layoutType) {
                     @Override
                     public View bind(Object viewModel, int layoutType) {
-                        viewBuilder.bind(itemView.getContext(), itemView, viewModel, layoutType, disposable);
+                        viewCreator.bind(itemView.getContext(), itemView, viewModel, layoutType, disposable);
 
                         return itemView;
                     }
