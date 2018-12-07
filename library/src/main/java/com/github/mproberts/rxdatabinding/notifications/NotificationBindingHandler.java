@@ -42,9 +42,9 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
 
     public interface NotificationBinding {
 
-        void setContentText(Flowable<String> text);
+        void setContentText(Flowable<CharSequence> text);
 
-        void setContentTitle(Flowable<String> title);
+        void setContentTitle(Flowable<CharSequence> title);
 
         void setTapActionListener(Class<? extends Activity> activity, Action action);
 
@@ -74,20 +74,20 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
         private boolean _dismissed = false;
 
         @Override
-        public void setContentTitle(Flowable<String> title) {
-            bind(title, new Consumer<String>() {
+        public void setContentTitle(Flowable<CharSequence> title) {
+            bind(title, new Consumer<CharSequence>() {
                 @Override
-                public void accept(String title) throws Exception {
+                public void accept(CharSequence title) throws Exception {
                     _builder.setContentTitle(title);
                 }
             });
         }
 
         @Override
-        public void setContentText(Flowable<String> text) {
-            bind(text, new Consumer<String>() {
+        public void setContentText(Flowable<CharSequence> text) {
+            bind(text, new Consumer<CharSequence>() {
                 @Override
-                public void accept(String text) throws Exception {
+                public void accept(CharSequence text) throws Exception {
                     _builder.setContentText(text);
                 }
             });
