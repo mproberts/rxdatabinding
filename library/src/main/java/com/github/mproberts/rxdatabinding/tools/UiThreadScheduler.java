@@ -4,6 +4,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import io.reactivex.Scheduler;
@@ -15,6 +17,10 @@ import io.reactivex.plugins.RxJavaPlugins;
 public class UiThreadScheduler extends Scheduler {
     private static UiThreadScheduler _scheduler = new UiThreadScheduler();
     private final Handler _handler;
+    private List<ScheduledAction> _queuedActions = new ArrayList<>();
+    private List<ScheduledAction> _swapActions = new ArrayList<>();
+    private final FlushAction _flushAction = new FlushAction();
+    private boolean _isScheduled = false;
 
     private UiThreadScheduler() {
         _handler = new Handler(Looper.getMainLooper());
@@ -60,6 +66,27 @@ public class UiThreadScheduler extends Scheduler {
         }
     }
 
+    private class FlushAction implements Runnable {
+
+        @Override
+        public void run() {
+            _isScheduled = false;
+
+            List<ScheduledAction> actions = _queuedActions;
+
+            _queuedActions = _swapActions;
+            _swapActions = _queuedActions;
+
+            for (int i = 0, c = actions.size(); i < c; ++i) {
+                ScheduledAction action = actions.get(i);
+
+                action.run();
+            }
+
+            actions.clear();
+        }
+    }
+
     class UiThreadWorker extends Worker {
         private volatile boolean _isDisposed;
         private final Handler _handler;
@@ -82,13 +109,23 @@ public class UiThreadScheduler extends Scheduler {
                 return Disposables.disposed();
             }
 
-            Message message = Message.obtain(_handler, scheduledAction);
+            if (delay > 0) {
+                Message message = Message.obtain(_handler, scheduledAction);
 
-            _handler.sendMessageDelayed(message, unit.toMillis(delay));
+                _handler.sendMessageDelayed(message, unit.toMillis(delay));
+            } else {
+                _queuedActions.add(scheduledAction);
+
+                if (!_isScheduled) {
+                    _isScheduled = true;
+
+                    Message message = Message.obtain(_handler, _flushAction);
+
+                    _handler.sendMessage(message);
+                }
+            }
 
             if (_isDisposed) {
-                _handler.removeCallbacks(scheduledAction);
-
                 scheduledAction.dispose();
 
                 return Disposables.disposed();
