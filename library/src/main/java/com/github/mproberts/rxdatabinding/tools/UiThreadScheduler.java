@@ -3,6 +3,7 @@ package com.github.mproberts.rxdatabinding.tools;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -74,6 +75,8 @@ public class UiThreadScheduler extends Scheduler {
 
             List<ScheduledAction> actions = _queuedActions;
 
+            Log.i("FLUSHING", "" + actions.size());
+
             _queuedActions = _swapActions;
             _swapActions = _queuedActions;
 
@@ -111,6 +114,8 @@ public class UiThreadScheduler extends Scheduler {
 
             if (delay > 0) {
                 Message message = Message.obtain(_handler, scheduledAction);
+
+                Log.i("FLUSHING", "scheduling");
 
                 _handler.sendMessageDelayed(message, unit.toMillis(delay));
             } else {
