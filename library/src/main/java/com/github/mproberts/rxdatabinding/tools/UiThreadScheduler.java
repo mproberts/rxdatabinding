@@ -8,6 +8,7 @@ import android.util.Log;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import io.reactivex.Scheduler;
 import io.reactivex.annotations.NonNull;
@@ -23,6 +24,8 @@ public class UiThreadScheduler extends Scheduler {
     private final FlushAction _flushAction = new FlushAction();
     private boolean _isScheduled = false;
 
+    private AtomicInteger _incrementer = new AtomicInteger(0);
+
     private UiThreadScheduler() {
         _handler = new Handler(Looper.getMainLooper());
     }
@@ -32,9 +35,11 @@ public class UiThreadScheduler extends Scheduler {
     }
 
     private class ScheduledAction implements Disposable, Runnable {
+        final int _id;
         private Runnable _action;
 
         private ScheduledAction(Runnable action) {
+            _id = _incrementer.incrementAndGet();
             _action = action;
         }
 
@@ -54,6 +59,7 @@ public class UiThreadScheduler extends Scheduler {
 
             if (action != null) {
                 try {
+                    Log.i("UIT", "RUN " + _id);
                     action.run();
                 } catch (Throwable t) {
                     try {
@@ -63,6 +69,8 @@ public class UiThreadScheduler extends Scheduler {
                         throw new RuntimeException(e);
                     }
                 }
+            } else {
+                Log.i("UIT", "RUN SKIP" + _id);
             }
         }
     }
@@ -71,22 +79,28 @@ public class UiThreadScheduler extends Scheduler {
 
         @Override
         public void run() {
-            _isScheduled = false;
+            int flushed = 0;
 
-            List<ScheduledAction> actions = _queuedActions;
+            while (_queuedActions.size() > 0) {
+                _isScheduled = false;
 
-            Log.i("FLUSHING", "" + actions.size());
+                List<ScheduledAction> actions = _queuedActions;
 
-            _queuedActions = _swapActions;
-            _swapActions = _queuedActions;
+                flushed += actions.size();
 
-            for (int i = 0, c = actions.size(); i < c; ++i) {
-                ScheduledAction action = actions.get(i);
+                _queuedActions = _swapActions;
+                _swapActions = _queuedActions;
 
-                action.run();
+                for (int i = 0, c = actions.size(); i < c; ++i) {
+                    ScheduledAction action = actions.get(i);
+
+                    action.run();
+                }
+
+                actions.clear();
             }
 
-            actions.clear();
+            Log.i("FLUSHING", "" + flushed);
         }
     }
 
@@ -107,6 +121,8 @@ public class UiThreadScheduler extends Scheduler {
             ScheduledAction scheduledAction = new ScheduledAction(run);
 
             if (Looper.myLooper() == Looper.getMainLooper()) {
+                Log.i("UIT", "SETUP IMMEDIATE " + scheduledAction._id);
+                Log.i("UIT", "RUN IMMEDIATE " + scheduledAction._id);
                 scheduledAction.run();
 
                 return Disposables.disposed();
@@ -115,10 +131,11 @@ public class UiThreadScheduler extends Scheduler {
             if (delay > 0) {
                 Message message = Message.obtain(_handler, scheduledAction);
 
-                Log.i("FLUSHING", "scheduling");
+                Log.i("UIT", "SETUP DELAYED " + scheduledAction._id);
 
                 _handler.sendMessageDelayed(message, unit.toMillis(delay));
             } else {
+                Log.i("UIT", "SETUP QUEUED " + scheduledAction._id);
                 _queuedActions.add(scheduledAction);
 
                 if (!_isScheduled) {
