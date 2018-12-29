@@ -23,6 +23,7 @@ public class UiThreadScheduler extends Scheduler {
     private List<ScheduledAction> _swapActions = new ArrayList<>();
     private final FlushAction _flushAction = new FlushAction();
     private boolean _isScheduled = false;
+    private final Object _queueLock = new Object();
 
     private AtomicInteger _incrementer = new AtomicInteger(0);
 
@@ -81,22 +82,24 @@ public class UiThreadScheduler extends Scheduler {
     }
 
     private void flush() {
-        _isScheduled = false;
+        List<ScheduledAction> actions;
 
-        while (_queuedActions.size() > 0) {
-            List<ScheduledAction> actions = _queuedActions;
+        synchronized (_queueLock) {
+            _isScheduled = false;
+
+            actions = _queuedActions;
 
             _queuedActions = _swapActions;
             _swapActions = _queuedActions;
-
-            for (int i = 0, c = actions.size(); i < c; ++i) {
-                ScheduledAction action = actions.get(i);
-
-                action.run();
-            }
-
-            actions.clear();
         }
+
+        for (int i = 0, c = actions.size(); i < c; ++i) {
+            ScheduledAction action = actions.get(i);
+
+            action.run();
+        }
+
+        actions.clear();
     }
 
     class UiThreadWorker extends Worker {
@@ -128,14 +131,16 @@ public class UiThreadScheduler extends Scheduler {
 
                 _handler.sendMessageDelayed(message, unit.toMillis(delay));
             } else {
-                _queuedActions.add(scheduledAction);
+                synchronized (_queueLock) {
+                    _queuedActions.add(scheduledAction);
 
-                if (!_isScheduled) {
-                    _isScheduled = true;
+                    if (!_isScheduled) {
+                        _isScheduled = true;
 
-                    Message message = Message.obtain(_handler, _flushAction);
+                        Message message = Message.obtain(_handler, _flushAction);
 
-                    _handler.sendMessage(message);
+                        _handler.sendMessage(message);
+                    }
                 }
             }
 
