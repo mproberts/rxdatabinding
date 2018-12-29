@@ -84,12 +84,14 @@ public class UiThreadScheduler extends Scheduler {
     private void flush() {
         List<ScheduledAction> actions;
 
-        _isScheduled = false;
+        synchronized (_queueLock) {
+            _isScheduled = false;
 
-        actions = _queuedActions;
+            actions = _queuedActions;
 
-        _queuedActions = _swapActions;
-        _swapActions = actions;
+            _queuedActions = _swapActions;
+            _swapActions = actions;
+        }
 
         for (int i = 0, c = actions.size(); i < c; ++i) {
             ScheduledAction action = actions.get(i);
@@ -129,14 +131,16 @@ public class UiThreadScheduler extends Scheduler {
 
                 _handler.sendMessageDelayed(message, unit.toMillis(delay));
             } else {
-                _queuedActions.add(scheduledAction);
+                synchronized (_queueLock) {
+                    _queuedActions.add(scheduledAction);
 
-                if (!_isScheduled) {
-                    _isScheduled = true;
+                    if (!_isScheduled) {
+                        _isScheduled = true;
 
-                    Message message = Message.obtain(_handler, _flushAction);
+                        Message message = Message.obtain(_handler, _flushAction);
 
-                    _handler.sendMessage(message);
+                        _handler.sendMessage(message);
+                    }
                 }
             }
 
