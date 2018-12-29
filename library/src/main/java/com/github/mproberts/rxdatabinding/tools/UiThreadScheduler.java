@@ -89,8 +89,12 @@ public class UiThreadScheduler extends Scheduler {
 
             actions = _queuedActions;
 
-            _queuedActions = _swapActions;
-            _swapActions = actions;
+            if (_swapActions != null) {
+                _queuedActions = _swapActions;
+                _swapActions = null;
+            } else {
+                _queuedActions = new ArrayList<>();
+            }
         }
 
         for (int i = 0, c = actions.size(); i < c; ++i) {
@@ -99,7 +103,13 @@ public class UiThreadScheduler extends Scheduler {
             action.run();
         }
 
-        actions.clear();
+        synchronized (_queueLock) {
+            if (_swapActions == null) {
+                actions.clear();
+
+                _swapActions = actions;
+            }
+        }
     }
 
     class UiThreadWorker extends Worker {
@@ -127,9 +137,7 @@ public class UiThreadScheduler extends Scheduler {
             }
 
             if (delay > 0) {
-                Message message = Message.obtain(_handler, scheduledAction);
-
-                _handler.sendMessageDelayed(message, unit.toMillis(delay));
+                _handler.postDelayed(scheduledAction, unit.toMillis(delay));
             } else {
                 synchronized (_queueLock) {
                     _queuedActions.add(scheduledAction);
@@ -137,9 +145,7 @@ public class UiThreadScheduler extends Scheduler {
                     if (!_isScheduled) {
                         _isScheduled = true;
 
-                        Message message = Message.obtain(_handler, _flushAction);
-
-                        _handler.sendMessage(message);
+                        _handler.post(_flushAction);
                     }
                 }
             }
