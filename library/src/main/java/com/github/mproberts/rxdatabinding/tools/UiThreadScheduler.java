@@ -59,7 +59,6 @@ public class UiThreadScheduler extends Scheduler {
 
             if (action != null) {
                 try {
-                    Log.i("UIT", "RUN " + _id);
                     action.run();
                 } catch (Throwable t) {
                     try {
@@ -69,8 +68,6 @@ public class UiThreadScheduler extends Scheduler {
                         throw new RuntimeException(e);
                     }
                 }
-            } else {
-                Log.i("UIT", "RUN SKIP" + _id);
             }
         }
     }
@@ -79,28 +76,26 @@ public class UiThreadScheduler extends Scheduler {
 
         @Override
         public void run() {
-            int flushed = 0;
+            flush();
+        }
+    }
 
-            while (_queuedActions.size() > 0) {
-                _isScheduled = false;
+    private void flush() {
+        _isScheduled = false;
 
-                List<ScheduledAction> actions = _queuedActions;
+        while (_queuedActions.size() > 0) {
+            List<ScheduledAction> actions = _queuedActions;
 
-                flushed += actions.size();
+            _queuedActions = _swapActions;
+            _swapActions = _queuedActions;
 
-                _queuedActions = _swapActions;
-                _swapActions = _queuedActions;
+            for (int i = 0, c = actions.size(); i < c; ++i) {
+                ScheduledAction action = actions.get(i);
 
-                for (int i = 0, c = actions.size(); i < c; ++i) {
-                    ScheduledAction action = actions.get(i);
-
-                    action.run();
-                }
-
-                actions.clear();
+                action.run();
             }
 
-            Log.i("FLUSHING", "" + flushed);
+            actions.clear();
         }
     }
 
@@ -121,8 +116,8 @@ public class UiThreadScheduler extends Scheduler {
             ScheduledAction scheduledAction = new ScheduledAction(run);
 
             if (Looper.myLooper() == Looper.getMainLooper()) {
-                Log.i("UIT", "SETUP IMMEDIATE " + scheduledAction._id);
-                Log.i("UIT", "RUN IMMEDIATE " + scheduledAction._id);
+                flush();
+
                 scheduledAction.run();
 
                 return Disposables.disposed();
@@ -131,11 +126,8 @@ public class UiThreadScheduler extends Scheduler {
             if (delay > 0) {
                 Message message = Message.obtain(_handler, scheduledAction);
 
-                Log.i("UIT", "SETUP DELAYED " + scheduledAction._id);
-
                 _handler.sendMessageDelayed(message, unit.toMillis(delay));
             } else {
-                Log.i("UIT", "SETUP QUEUED " + scheduledAction._id);
                 _queuedActions.add(scheduledAction);
 
                 if (!_isScheduled) {
