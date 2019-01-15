@@ -340,7 +340,7 @@ public final class ViewPagerDataBindings {
 
         @Override
         public void destroyItem(@NonNull ViewGroup container, int position, @NonNull Object object) {
-//            super.destroyItem(container, position, object);
+            container.removeView(((PageHolder) object).root);
         }
 
         public void unsubscribe() {
