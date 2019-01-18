@@ -98,6 +98,17 @@ public final class ViewDataBindings {
         }, view, newValue);
     }
 
+    @BindingAdapter("android:onLongClick")
+    public static void bindAndroidOnLongClick(final View view, final Runnable listener) {
+        view.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                listener.run();
+                return true;
+            }
+        });
+    }
+
     @BindingAdapter("android:onClick")
     public static void bindAndroidOnClick(final View view, final Runnable listener) {
         view.setOnClickListener(new View.OnClickListener() {
