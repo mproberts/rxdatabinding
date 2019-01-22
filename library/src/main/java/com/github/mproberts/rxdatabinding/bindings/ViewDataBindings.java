@@ -13,6 +13,8 @@ import android.widget.EditText;
 
 import com.github.mproberts.rxdatabinding.tools.DataBindingTools;
 
+import java.util.concurrent.Callable;
+
 import io.reactivex.Flowable;
 import io.reactivex.functions.Action;
 import io.reactivex.functions.Consumer;
@@ -99,12 +101,15 @@ public final class ViewDataBindings {
     }
 
     @BindingAdapter("android:onLongClick")
-    public static void bindAndroidOnLongClick(final View view, final Runnable listener) {
+    public static void bindAndroidOnLongClick(final View view, final Callable<Boolean> listener) {
         view.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
-                listener.run();
-                return true;
+                try {
+                    return listener.call();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
             }
         });
     }
