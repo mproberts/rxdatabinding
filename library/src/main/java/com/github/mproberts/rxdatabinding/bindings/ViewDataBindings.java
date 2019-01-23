@@ -101,15 +101,12 @@ public final class ViewDataBindings {
     }
 
     @BindingAdapter("android:onLongClick")
-    public static void bindAndroidOnLongClick(final View view, final Callable<Boolean> listener) {
+    public static void bindAndroidOnLongClick(final View view, final Runnable listener) {
         view.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
-                try {
-                    return listener.call();
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+                listener.run();
+                return true;
             }
         });
     }
