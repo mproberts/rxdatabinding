@@ -1,5 +1,6 @@
 package com.github.mproberts.rxdatabinding.tools;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.Resources;
 import androidx.databinding.BindingAdapter;
@@ -7,6 +8,9 @@ import android.os.Build;
 import androidx.annotation.StringRes;
 import android.widget.TextSwitcher;
 import android.widget.TextView;
+
+import com.github.mproberts.rxtools.list.FlowableList;
+import com.github.mproberts.rxtools.list.Update;
 
 import org.reactivestreams.Publisher;
 
@@ -49,11 +53,62 @@ public final class Pluralize {
             this.single = single;
             this.any = any;
         }
+
+        @SuppressLint("ResourceType")
+        public String toCommaSeparatedString(Context context) {
+
+            Resources resources = context.getResources();
+            String separator = ", ";
+
+            Locale locale;
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                locale = context.getResources().getConfiguration().getLocales().get(0);
+            } else {
+                //noinspection deprecation
+                locale = context.getResources().getConfiguration().locale;
+            }
+
+
+            String displayLanguage = locale.getDisplayLanguage();
+
+            if (displayLanguage.equals(ENGLISH_LOCALE_LANGUAGE)) {
+                // skip
+            } else if (displayLanguage.equals(ARABIC_LOCALE_LANGUAGE)) {
+                separator = "\u060C";
+            } else if (displayLanguage.equals(CHINESE_LOCALE_LANGUAGE)
+                    || displayLanguage.equals(CHINESE_TRADITIONAL_LOCALE_LANGUAGE)
+                    || displayLanguage.equals(JAPANESE_LOCALE_LANGUAGE)
+                    || displayLanguage.equals(KOREAN_LOCALE_LANGUAGE)) {
+                separator = "\u3001";
+            }
+
+            if (values == null || values.size() == 0) {
+                if (zero > 0) {
+                    return resources.getString(zero);
+                }
+            } else if (values.size() == 1) {
+                if (single > 0) {
+                    return resources.getString(single, values.get(0));
+                }
+            } else if (any > 0) {
+                String valueString = values.get(0);
+                String lastString = values.get(values.size() - 1);
+
+                for (int i = 1, l = values.size() - 1; i < l; ++i) {
+                    valueString += separator + values.get(i);
+                }
+
+                return resources.getString(any, valueString, lastString);
+            }
+
+            return "";
+        }
     }
 
     @BindingAdapter("android:text")
     public static void bindCommaSplitText(final TextView view, CommaSplit split) {
-        commaSeparated(view.getContext(), split);
+        split.toCommaSeparatedString(view.getContext());
     }
 
     @BindingAdapter("android:text")
@@ -61,14 +116,14 @@ public final class Pluralize {
         DataBindingTools.bindViewProperty(android.R.attr.text, new Consumer<CommaSplit>() {
             @Override
             public void accept(CommaSplit split) throws Exception {
-                view.setText(commaSeparated(view.getContext(), split));
+                view.setText(split.toCommaSeparatedString(view.getContext()));
             }
         }, view, newValue);
     }
 
     @BindingAdapter("android:text")
     public static void bindCommaSplitText(final TextSwitcher view, CommaSplit split) {
-        commaSeparated(view.getContext(), split);
+        split.toCommaSeparatedString(view.getContext());
     }
 
     @BindingAdapter("android:text")
@@ -76,7 +131,7 @@ public final class Pluralize {
         DataBindingTools.bindViewProperty(android.R.attr.text, new Consumer<CommaSplit>() {
             @Override
             public void accept(CommaSplit split) throws Exception {
-                view.setText(commaSeparated(view.getContext(), split));
+                view.setText(split.toCommaSeparatedString(view.getContext()));
             }
         }, view, newValue);
     }
@@ -90,6 +145,15 @@ public final class Pluralize {
             @Override
             public CommaSplit apply(@NonNull List<String> values) throws Exception {
                 return new CommaSplit(values, zero, single, any);
+            }
+        });
+    }
+
+    public static Flowable<CommaSplit> list(FlowableList<String> values, @StringRes final int zero, @StringRes final int single, @StringRes final int any) {
+        return values.updates().map(new Function<Update<String>, CommaSplit>() {
+            @Override
+            public CommaSplit apply(@NonNull Update<String> update) throws Exception {
+                return new CommaSplit(update.list, zero, single, any);
             }
         });
     }
@@ -133,55 +197,5 @@ public final class Pluralize {
 
     public static Flowable<CommaSplit> list(Flowable<List<String>> values, @StringRes final int single, @StringRes final int any) {
         return list(values, -1, single, any);
-    }
-
-    private static String commaSeparated(Context context, CommaSplit split) {
-
-        Resources resources = context.getResources();
-        String separator = ", ";
-
-        Locale locale;
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            locale = context.getResources().getConfiguration().getLocales().get(0);
-        } else {
-            //noinspection deprecation
-            locale = context.getResources().getConfiguration().locale;
-        }
-
-
-        String displayLanguage = locale.getDisplayLanguage();
-
-        if (displayLanguage.equals(ENGLISH_LOCALE_LANGUAGE)) {
-            // skip
-        } else if (displayLanguage.equals(ARABIC_LOCALE_LANGUAGE)) {
-            separator = "\u060C";
-        } else if (displayLanguage.equals(CHINESE_LOCALE_LANGUAGE)
-                || displayLanguage.equals(CHINESE_TRADITIONAL_LOCALE_LANGUAGE)
-                || displayLanguage.equals(JAPANESE_LOCALE_LANGUAGE)
-                || displayLanguage.equals(KOREAN_LOCALE_LANGUAGE)) {
-            separator = "\u3001";
-        }
-
-        if (split.values == null || split.values.size() == 0) {
-            if (split.zero > 0) {
-                return resources.getString(split.zero);
-            }
-        } else if (split.values.size() == 1) {
-            if (split.single > 0) {
-                return resources.getString(split.single, split.values.get(0));
-            }
-        } else if (split.any > 0) {
-            String valueString = split.values.get(0);
-            String lastString = split.values.get(split.values.size() - 1);
-
-            for (int i = 1, l = split.values.size() - 1; i < l; ++i) {
-                valueString += separator + split.values.get(i);
-            }
-
-            return resources.getString(split.any, valueString, lastString);
-        }
-
-        return "";
     }
 }
