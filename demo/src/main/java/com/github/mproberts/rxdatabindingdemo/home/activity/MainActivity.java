@@ -1,5 +1,6 @@
 package com.github.mproberts.rxdatabindingdemo.home.activity;
 
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 
@@ -54,7 +55,7 @@ public class MainActivity extends AndroidBindingMainActivity {
 
         _notifications.setCreator(new NotificationBindingHandler.NotificationCreator<NotificationViewModel>() {
             @Override
-            public void createNotification(NotificationViewModel model, NotificationBindingHandler.NotificationBinding binding) {
+            public void createNotification(Context context, NotificationViewModel model, NotificationBindingHandler.NotificationBinding binding) {
                 binding.setNotificationId(model.notificationId());
                 binding.setContentTitle(model.title());
                 binding.setContentText(model.subtitle());

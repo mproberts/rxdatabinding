@@ -182,8 +182,8 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
             return _builder;
         }
 
-        void setup(T model, boolean invalidateImmediately) {
-            _creator.createNotification(model, this);
+        void setup(Context context, T model, boolean invalidateImmediately) {
+            _creator.createNotification(context, model, this);
             _isReady = true;
 
             if (_notificationId == INVALID_NOTIFICATION_ID) {
@@ -258,7 +258,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
     }
 
     public interface NotificationCreator<T> {
-        void createNotification(T model, NotificationBinding binding);
+        void createNotification(Context context, T model, NotificationBinding binding);
     }
 
     private String _channelId;
@@ -325,7 +325,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
                     for (Change change : update.changes) {
                         switch (change.type) {
                             case Inserted: {
-                                BaseNotificationBinding binding = bindItem(update.list.get(change.to), true);
+                                BaseNotificationBinding binding = bindItem(getContext(), update.list.get(change.to), true);
                                 _notificationBindings.add(change.to, binding);
                                 break;
                             }
@@ -348,7 +348,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
                                 }
 
                                 for (T model : update.list) {
-                                    BaseNotificationBinding binding = bindItem(model, _clearOnReload);
+                                    BaseNotificationBinding binding = bindItem(getContext(), model, _clearOnReload);
 
                                     _notificationBindings.add(binding);
                                 }
@@ -426,10 +426,10 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
         notifyBinding(binding);
     }
 
-    private BaseNotificationBinding bindItem(T model, boolean andNotify) {
+    private BaseNotificationBinding bindItem(Context context, T model, boolean andNotify) {
         BaseNotificationBinding binding = new BaseNotificationBinding();
 
-        binding.setup(model, andNotify);
+        binding.setup(context, model, andNotify);
 
         return binding;
     }
