@@ -3,6 +3,8 @@ package com.github.mproberts.rxdatabinding.tools;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.Resources;
+
+import androidx.annotation.Nullable;
 import androidx.databinding.BindingAdapter;
 import android.os.Build;
 import androidx.annotation.StringRes;
@@ -11,6 +13,7 @@ import android.widget.TextView;
 
 import com.github.mproberts.rxtools.list.FlowableList;
 import com.github.mproberts.rxtools.list.Update;
+import com.github.mproberts.rxtools.types.Optional;
 
 import org.reactivestreams.Publisher;
 
@@ -40,23 +43,40 @@ public final class Pluralize {
     public static class CommaSplit {
 
         final List<String> values;
-        @StringRes
-        final int zero;
-        @StringRes
-        final int single;
-        @StringRes
-        final int any;
+        @StringRes final int zero;
+        @StringRes final int single;
+        @StringRes final int any;
+
+        @Nullable final String zeroString;
+        @Nullable final String singleString;
+        @Nullable final String anyString;
 
         public CommaSplit(List<String> values, int zero, int single, int any) {
             this.values = values;
+
             this.zero = zero;
             this.single = single;
             this.any = any;
+
+            this.zeroString = null;
+            this.singleString = null;
+            this.anyString = null;
+        }
+
+        public CommaSplit(List<String> values, String zeroString, String singleString, String anyString) {
+            this.values = values;
+
+            this.zero = -1;
+            this.single = -1;
+            this.any = -1;
+
+            this.zeroString = zeroString;
+            this.singleString = singleString;
+            this.anyString = anyString;
         }
 
         @SuppressLint("ResourceType")
         public String toCommaSeparatedString(Context context) {
-
             Resources resources = context.getResources();
             String separator = ", ";
 
@@ -68,7 +88,6 @@ public final class Pluralize {
                 //noinspection deprecation
                 locale = context.getResources().getConfiguration().locale;
             }
-
 
             String displayLanguage = locale.getDisplayLanguage();
 
@@ -86,12 +105,16 @@ public final class Pluralize {
             if (values == null || values.size() == 0) {
                 if (zero > 0) {
                     return resources.getString(zero);
+                } else if (zeroString != null) {
+                    return zeroString;
                 }
             } else if (values.size() == 1) {
                 if (single > 0) {
                     return resources.getString(single, values.get(0));
+                } else if (singleString != null) {
+                    return String.format(singleString, values.get(0));
                 }
-            } else if (any > 0) {
+            } else {
                 String valueString = values.get(0);
                 String lastString = values.get(values.size() - 1);
 
@@ -99,7 +122,11 @@ public final class Pluralize {
                     valueString += separator + values.get(i);
                 }
 
-                return resources.getString(any, valueString, lastString);
+                if (any > 0) {
+                    return resources.getString(any, valueString, lastString);
+                } else if (anyString != null) {
+                    return String.format(anyString, valueString, lastString);
+                }
             }
 
             return "";
@@ -154,6 +181,32 @@ public final class Pluralize {
             @Override
             public CommaSplit apply(@NonNull Update<String> update) throws Exception {
                 return new CommaSplit(update.list, zero, single, any);
+            }
+        });
+    }
+
+    public static Flowable<CommaSplit> list(FlowableList<String> values, final String zero, final String single, final String any) {
+        return values.updates().map(new Function<Update<String>, CommaSplit>() {
+            @Override
+            public CommaSplit apply(@NonNull Update<String> update) throws Exception {
+                return new CommaSplit(update.list, zero, single, any);
+            }
+        });
+    }
+
+    public static Flowable<CommaSplit> optionalList(FlowableList<Optional<String>> values, final String zero, final String single, final String any, final String empty) {
+        return values.updates().map(new Function<Update<Optional<String>>, CommaSplit>() {
+            @Override
+            public CommaSplit apply(@NonNull Update<Optional<String>> update) throws Exception {
+                List<Optional<String>> list = update.list;
+                ArrayList<String> nonOptional = new ArrayList<>(list.size());
+
+                for (Optional<String> rawString : list) {
+                    nonOptional.add(rawString.orElse(empty));
+                }
+
+
+                return new CommaSplit(nonOptional, zero, single, any);
             }
         });
     }
