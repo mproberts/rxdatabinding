@@ -145,6 +145,16 @@ public final class ViewDataBindings {
         });
     }
 
+    @BindingAdapter("android:tag")
+    public static void bindViewTag(final View view, Flowable<Object> tag) {
+        DataBindingTools.bindViewProperty(android.R.attr.visibility, new Consumer<Object>() {
+            @Override
+            public void accept(Object value) {
+                view.setTag(value);
+            }
+        }, view, tag);
+    }
+
     @BindingConversion
     public static View.OnClickListener onClickActionConversion(final Action listener) {
         if (listener == null) {
