@@ -147,7 +147,7 @@ public final class ViewDataBindings {
 
     @BindingAdapter("android:tag")
     public static void bindViewTag(final View view, Flowable<Object> tag) {
-        DataBindingTools.bindViewProperty(android.R.attr.visibility, new Consumer<Object>() {
+        DataBindingTools.bindViewProperty(android.R.attr.tag, new Consumer<Object>() {
             @Override
             public void accept(Object value) {
                 view.setTag(value);
