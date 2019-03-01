@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Build;
+
 import androidx.annotation.DrawableRes;
 import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
@@ -249,6 +250,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
         Intent intent = new Intent(getContext(), activity)
                 .addFlags(Intent.FLAG_FROM_BACKGROUND)
                 .addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 .setAction(getActionModelEventId());
 
         intent.putExtra(KEY_NOTIFICATION_ID, notificationId);
