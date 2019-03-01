@@ -250,7 +250,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
         Intent intent = new Intent(getContext(), activity)
                 .addFlags(Intent.FLAG_FROM_BACKGROUND)
                 .addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES)
-                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK)
                 .setAction(getActionModelEventId());
 
         intent.putExtra(KEY_NOTIFICATION_ID, notificationId);
