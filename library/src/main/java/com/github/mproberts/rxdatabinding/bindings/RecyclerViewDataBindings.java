@@ -292,7 +292,7 @@ public final class RecyclerViewDataBindings {
             }
 
             public void recycled(ViewHolder holder) {
-                ((ItemViewHolder) holder).disposable.dispose();
+                ((ItemViewHolder) holder).disposable.clear();
             }
         }
 
