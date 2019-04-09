@@ -398,10 +398,6 @@ public final class RecyclerViewDataBindings {
         @Override
         public void onViewDetachedFromWindow(@NonNull ViewHolder holder) {
             super.onViewDetachedFromWindow(holder);
-
-            if (_subscription != null) {
-                _subscription.dispose();
-            }
         }
 
         @Override
