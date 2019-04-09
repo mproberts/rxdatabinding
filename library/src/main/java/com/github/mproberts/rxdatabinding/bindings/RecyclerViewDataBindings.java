@@ -391,6 +391,20 @@ public final class RecyclerViewDataBindings {
         }
 
         @Override
+        public void onViewAttachedToWindow(@NonNull ViewHolder holder) {
+            super.onViewAttachedToWindow(holder);
+        }
+
+        @Override
+        public void onViewDetachedFromWindow(@NonNull ViewHolder holder) {
+            super.onViewDetachedFromWindow(holder);
+
+            if (_subscription != null) {
+                _subscription.dispose();
+            }
+        }
+
+        @Override
         public int getItemViewType(int position) {
             Object model = _currentState.get(position);
 
