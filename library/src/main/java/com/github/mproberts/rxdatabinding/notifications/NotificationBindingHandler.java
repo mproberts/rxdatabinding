@@ -9,11 +9,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Build;
+
 import androidx.annotation.DrawableRes;
 import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
+import com.github.mproberts.rxdatabinding.tools.UiThreadScheduler;
 import com.github.mproberts.rxtools.list.Change;
 import com.github.mproberts.rxtools.list.FlowableList;
 import com.github.mproberts.rxtools.list.Update;
@@ -319,7 +321,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
         _boundList = list;
 
         if (list != null) {
-            Disposable subscription = list.updates().subscribe(new Consumer<Update<T>>() {
+            _listSubscription = list.updates().subscribeOn(UiThreadScheduler.uiThread()).subscribe(new Consumer<Update<T>>() {
                 @Override
                 public void accept(Update<T> update) throws Exception {
                     for (Change change : update.changes) {
@@ -379,8 +381,6 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
                     }
                 }
             });
-
-            _listSubscription = subscription;
         }
     }
 
