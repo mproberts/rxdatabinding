@@ -321,7 +321,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
         _boundList = list;
 
         if (list != null) {
-            _listSubscription = list.updates().subscribeOn(UiThreadScheduler.uiThread()).subscribe(new Consumer<Update<T>>() {
+            _listSubscription = list.updates().observeOn(UiThreadScheduler.uiThread()).subscribe(new Consumer<Update<T>>() {
                 @Override
                 public void accept(Update<T> update) throws Exception {
                     for (Change change : update.changes) {
