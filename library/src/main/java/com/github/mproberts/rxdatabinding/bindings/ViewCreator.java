@@ -190,37 +190,6 @@ public interface ViewCreator<T, TView extends View> {
     }
 }
 
-public class LayoutViewCreator<T, TView extends View> implements ViewCreator<T, TView> {
-
-    private final int _layoutId;
-
-    public LayoutViewCreator(int layoutId) {
-        _layoutId = layoutId;
-    }
-
-    @Override
-    public int findType(T model) {
-        return _layoutId;
-    }
-
-    @Override
-    public void bind(Context context, TView view, T model, int layoutType, CompositeDisposable lifecycle) {
-        ViewDataBinding binding = DataBindingUtil.getBinding(view);
-        binding.setVariable(BR.model, model);
-        binding.executePendingBindings();
-    }
-
-    @Override
-    public View create(Context context, LayoutInflater inflater, ViewGroup parent, int layoutType) {
-        return DataBindingUtil.inflate(inflater, _layoutId, parent, false).getRoot();
-    }
-
-    @Override
-    public boolean recycle(TView view, int layoutType) {
-        return false;
-    }
-}
-
 class CachingCreator implements ViewCreator {
 
     private final ViewCreator _innerBuilder;
