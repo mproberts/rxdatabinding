@@ -190,11 +190,11 @@ public interface ViewCreator<T, TView extends View> {
     }
 }
 
-class LayoutViewCreator<T, TView extends View> implements ViewCreator<T, TView> {
+public class LayoutViewCreator<T, TView extends View> implements ViewCreator<T, TView> {
 
     private final int _layoutId;
 
-    LayoutViewCreator(int layoutId) {
+    public LayoutViewCreator(int layoutId) {
         _layoutId = layoutId;
     }
 
