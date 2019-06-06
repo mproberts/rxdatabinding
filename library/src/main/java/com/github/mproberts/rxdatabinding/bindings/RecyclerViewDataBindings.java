@@ -12,6 +12,9 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.github.mproberts.rxdatabinding.BR;
+import com.github.mproberts.rxdatabinding.internal.Lifecycle;
+import com.github.mproberts.rxdatabinding.internal.MutableLifecycle;
+import com.github.mproberts.rxdatabinding.internal.WindowAttachLifecycle;
 import com.github.mproberts.rxdatabinding.tools.DataBindingTools;
 import com.github.mproberts.rxdatabinding.tools.UiThreadScheduler;
 import com.github.mproberts.rxtools.list.Change;
@@ -264,6 +267,7 @@ public final class RecyclerViewDataBindings {
         private Disposable _subscription;
         private ItemViewCreator _viewCreator;
         private ItemDataProvider _dataProvider;
+        private MutableLifecycle _lifecycle;
 
         public interface ItemDataProvider {
 
@@ -340,21 +344,21 @@ public final class RecyclerViewDataBindings {
         public void onAttachedToRecyclerView(RecyclerView recyclerView) {
             super.onAttachedToRecyclerView(recyclerView);
 
-            recyclerView.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+            if (_lifecycle == null) {
+                _lifecycle = new WindowAttachLifecycle(recyclerView);
+            }
+
+            _lifecycle.addListener(new Lifecycle.Listener() {
                 @Override
-                public void onViewAttachedToWindow(View view) {
+                public void onActive() {
                     subscribe();
                 }
 
                 @Override
-                public void onViewDetachedFromWindow(View view) {
+                public void onInactive() {
                     unsubscribe();
                 }
             });
-
-            if (recyclerView.getParent() != null) {
-                subscribe();
-            }
         }
 
         private void subscribe() {
@@ -415,7 +419,7 @@ public final class RecyclerViewDataBindings {
         @Override
         public void onDetachedFromRecyclerView(RecyclerView recyclerView) {
             super.onDetachedFromRecyclerView(recyclerView);
-            unsubscribe();
+            _lifecycle.setActive(false);
         }
 
         @Override
