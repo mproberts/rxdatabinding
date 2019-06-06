@@ -135,6 +135,10 @@ public final class Pluralize {
         public boolean isEmpty() {
             return values.isEmpty();
         }
+
+        public int valueCount() {
+            return values.size();
+        }
     }
 
     @BindingAdapter("android:text")
