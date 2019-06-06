@@ -340,40 +340,71 @@ public final class RecyclerViewDataBindings {
         public void onAttachedToRecyclerView(RecyclerView recyclerView) {
             super.onAttachedToRecyclerView(recyclerView);
 
+            recyclerView.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+                @Override
+                public void onViewAttachedToWindow(View view) {
+                    subscribe();
+                }
+
+                @Override
+                public void onViewDetachedFromWindow(View view) {
+                    unsubscribe();
+                }
+            });
+
+            if (recyclerView.getParent() != null) {
+                subscribe();
+            }
+        }
+
+        private void subscribe() {
+            if (_subscription != null) {
+                return;
+            }
+
             FlowableList<?> list = _dataProvider.getList();
 
             if (list != null) {
                 _subscription = list.updates()
-                        .observeOn(UiThreadScheduler.uiThread())
-                        .subscribe(new Consumer<Update<?>>() {
-                            @Override
-                            public void accept(Update<?> update) throws Exception {
-                                _currentState = update.list;
+                    .observeOn(UiThreadScheduler.uiThread())
+                    .subscribe(new Consumer<Update<?>>() {
+                        @Override
+                        public void accept(Update<?> update) throws Exception {
+                            _currentState = update.list;
 
-                                for (int i = 0, l = update.changes.size(); i < l; ++i) {
-                                    Change change = update.changes.get(i);
+                            for (int i = 0, l = update.changes.size(); i < l; ++i) {
+                                Change change = update.changes.get(i);
 
-                                    switch (change.type) {
-                                        case Moved:
-                                            notifyItemMoved(change.from, change.to);
-                                            break;
+                                switch (change.type) {
+                                    case Moved:
+                                        notifyItemMoved(change.from, change.to);
+                                        break;
 
-                                        case Inserted:
-                                            notifyItemInserted(change.to);
-                                            break;
+                                    case Inserted:
+                                        notifyItemInserted(change.to);
+                                        break;
 
-                                        case Removed:
-                                            notifyItemRangeRemoved(change.from, 1);
-                                            break;
+                                    case Removed:
+                                        notifyItemRangeRemoved(change.from, 1);
+                                        break;
 
-                                        case Reloaded:
-                                            notifyDataSetChanged();
-                                            break;
-                                    }
+                                    case Reloaded:
+                                        notifyDataSetChanged();
+                                        break;
                                 }
                             }
-                        });
+                        }
+                    });
             }
+        }
+
+        private void unsubscribe() {
+            if (_subscription == null) {
+                return;
+            }
+
+            _subscription.dispose();
+            _subscription = null;
         }
 
         @Override
@@ -384,10 +415,7 @@ public final class RecyclerViewDataBindings {
         @Override
         public void onDetachedFromRecyclerView(RecyclerView recyclerView) {
             super.onDetachedFromRecyclerView(recyclerView);
-
-            if (_subscription != null) {
-                _subscription.dispose();
-            }
+            unsubscribe();
         }
 
         @Override
