@@ -12,6 +12,9 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.github.mproberts.rxdatabinding.BR;
+import com.github.mproberts.rxdatabinding.internal.Lifecycle;
+import com.github.mproberts.rxdatabinding.internal.MutableLifecycle;
+import com.github.mproberts.rxdatabinding.internal.WindowAttachLifecycle;
 import com.github.mproberts.rxdatabinding.tools.DataBindingTools;
 import com.github.mproberts.rxdatabinding.tools.UiThreadScheduler;
 import com.github.mproberts.rxtools.list.Change;
@@ -264,6 +267,7 @@ public final class RecyclerViewDataBindings {
         private Disposable _subscription;
         private ItemViewCreator _viewCreator;
         private ItemDataProvider _dataProvider;
+        private MutableLifecycle _lifecycle;
 
         public interface ItemDataProvider {
 
@@ -340,6 +344,30 @@ public final class RecyclerViewDataBindings {
         public void onAttachedToRecyclerView(RecyclerView recyclerView) {
             super.onAttachedToRecyclerView(recyclerView);
 
+            if (_lifecycle != null) {
+                _lifecycle.setActive(false); // will trigger a call to unsubscribe() if active
+            }
+
+            _lifecycle = new WindowAttachLifecycle(recyclerView);
+
+            _lifecycle.addListener(new Lifecycle.Listener() {
+                @Override
+                public void onActive() {
+                    subscribe();
+                }
+
+                @Override
+                public void onInactive() {
+                    unsubscribe();
+                }
+            });
+        }
+
+        private void subscribe() {
+            if (_subscription != null) {
+                return;
+            }
+
             FlowableList<?> list = _dataProvider.getList();
 
             if (list != null) {
@@ -376,6 +404,15 @@ public final class RecyclerViewDataBindings {
             }
         }
 
+        private void unsubscribe() {
+            if (_subscription == null) {
+                return;
+            }
+
+            _subscription.dispose();
+            _subscription = null;
+        }
+
         @Override
         public long getItemId(int position) {
             return super.getItemId(position);
@@ -384,10 +421,7 @@ public final class RecyclerViewDataBindings {
         @Override
         public void onDetachedFromRecyclerView(RecyclerView recyclerView) {
             super.onDetachedFromRecyclerView(recyclerView);
-
-            if (_subscription != null) {
-                _subscription.dispose();
-            }
+            _lifecycle.setActive(false);
         }
 
         @Override
