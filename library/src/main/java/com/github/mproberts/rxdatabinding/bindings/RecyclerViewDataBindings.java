@@ -344,9 +344,11 @@ public final class RecyclerViewDataBindings {
         public void onAttachedToRecyclerView(RecyclerView recyclerView) {
             super.onAttachedToRecyclerView(recyclerView);
 
-            if (_lifecycle == null) {
-                _lifecycle = new WindowAttachLifecycle(recyclerView);
+            if (_lifecycle != null) {
+                _lifecycle.setActive(false); // will trigger a call to unsubscribe() if active
             }
+
+            _lifecycle = new WindowAttachLifecycle(recyclerView);
 
             _lifecycle.addListener(new Lifecycle.Listener() {
                 @Override
