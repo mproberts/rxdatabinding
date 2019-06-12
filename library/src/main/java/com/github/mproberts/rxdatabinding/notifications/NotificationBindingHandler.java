@@ -447,7 +447,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
 
         String action = intent.getAction();
 
-        if (action != null && action.startsWith(getActionDismissId())) {
+        if (getActionDismissId().equals(action)) {
             int notificationId = intent.getIntExtra(KEY_NOTIFICATION_ID, INVALID_NOTIFICATION_ID);
 
             if (notificationId == INVALID_NOTIFICATION_ID) {
@@ -460,7 +460,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
                     break;
                 }
             }
-        } else if (action != null && action.startsWith(getActionModelEventId())) {
+        } else if (getActionModelEventId().equals(action)) {
             int notificationId = intent.getIntExtra(KEY_NOTIFICATION_ID, INVALID_NOTIFICATION_ID);
             String actionName = intent.getStringExtra(KEY_MAPPED_ACTION);
 
