@@ -256,7 +256,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
         intent.putExtra(KEY_NOTIFICATION_ID, notificationId);
         intent.putExtra(KEY_MAPPED_ACTION, actionName);
 
-        return PendingIntent.getActivity(getContext(), 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        return PendingIntent.getActivity(getContext(), 0, intent, 0);
     }
 
     public interface NotificationCreator<T> {
