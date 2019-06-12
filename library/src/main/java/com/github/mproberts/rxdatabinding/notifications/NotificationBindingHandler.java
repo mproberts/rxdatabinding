@@ -244,7 +244,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
 
         intent.putExtra(KEY_NOTIFICATION_ID, notificationId);
 
-        return PendingIntent.getBroadcast(getContext(), 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        return PendingIntent.getBroadcast(getContext(), 0, intent, 0);
     }
 
     private PendingIntent createBoundActionIntent(int notificationId, Class<? extends Activity> activity, String actionName) {
