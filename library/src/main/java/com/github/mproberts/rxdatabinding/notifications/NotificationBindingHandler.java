@@ -240,7 +240,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
         Intent intent = new Intent()
                 .addFlags(Intent.FLAG_FROM_BACKGROUND)
                 .addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES)
-                .setAction(getActionDismissId());
+                .setAction(getActionDismissId() + notificationId);
 
         intent.putExtra(KEY_NOTIFICATION_ID, notificationId);
 
@@ -251,7 +251,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
         Intent intent = new Intent(getContext(), activity)
                 .addFlags(Intent.FLAG_FROM_BACKGROUND)
                 .addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES)
-                .setAction(getActionModelEventId());
+                .setAction(getActionModelEventId() + notificationId);
 
         intent.putExtra(KEY_NOTIFICATION_ID, notificationId);
         intent.putExtra(KEY_MAPPED_ACTION, actionName);
@@ -447,7 +447,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
 
         String action = intent.getAction();
 
-        if (getActionDismissId().equals(action)) {
+        if (action != null && action.startsWith(getActionDismissId())) {
             int notificationId = intent.getIntExtra(KEY_NOTIFICATION_ID, INVALID_NOTIFICATION_ID);
 
             if (notificationId == INVALID_NOTIFICATION_ID) {
@@ -460,7 +460,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
                     break;
                 }
             }
-        } else if (getActionModelEventId().equals(action)) {
+        } else if (action != null && action.startsWith(getActionModelEventId())) {
             int notificationId = intent.getIntExtra(KEY_NOTIFICATION_ID, INVALID_NOTIFICATION_ID);
             String actionName = intent.getStringExtra(KEY_MAPPED_ACTION);
 
