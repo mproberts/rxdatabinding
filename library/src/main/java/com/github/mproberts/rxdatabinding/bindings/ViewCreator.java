@@ -61,14 +61,14 @@ public interface ViewCreator<T, TView extends View> {
 
         @Override
         public void bind(Context context, View view, Object model, int layoutType, CompositeDisposable lifecycle) {
-            MatchingViewCreator binding = _bindings.get(layoutType);
+            MatchingViewCreator binding = _bindings.get(getWrappedIndex(layoutType));
 
             binding.bind(context, view, model, layoutType, lifecycle);
         }
 
         @Override
         public View create(Context context, LayoutInflater inflater, ViewGroup parent, int layoutType) {
-            MatchingViewCreator binding = _bindings.get(layoutType);
+            MatchingViewCreator binding = _bindings.get(getWrappedIndex(layoutType));
 
             View view = binding.create(context, inflater, parent, layoutType);
 
@@ -77,19 +77,30 @@ public interface ViewCreator<T, TView extends View> {
 
         @Override
         public boolean recycle(View view, int layoutType) {
-            MatchingViewCreator binding = _bindings.get(layoutType);
+            MatchingViewCreator binding = _bindings.get(getWrappedIndex(layoutType));
 
             return binding.recycle(view, layoutType);
         }
 
-        public Creator add(MatchingViewCreator binding) {
-            _bindings.add(binding);
-
-            return this;
+        private int getWrappedIndex(int layoutType) {
+            return layoutType & 0x000000ff;
         }
 
-        public <T> Creator add(Class<T> clzz, final ViewCreator binding) {
-            _bindings.add(new TypeMatchingViewCreator<T>(clzz) {
+        private int fromWrappedLayoutType(int layoutType) {
+            return (layoutType & 0xffffff00) >> 8;
+        }
+
+        private int toWrappedLayoutType(int layoutType, int index) {
+            return layoutType << 8 | index;
+        }
+
+        public Creator add(final MatchingViewCreator binding) {
+            _bindings.add(new MatchingViewCreator() {
+                @Override
+                public boolean matches(Object model) {
+                    return binding.matches(model);
+                }
+
                 @Override
                 public int findType(Object model) {
                     return binding.findType(model);
@@ -97,17 +108,45 @@ public interface ViewCreator<T, TView extends View> {
 
                 @Override
                 public void bind(Context context, View view, Object model, int layoutType, CompositeDisposable lifecycle) {
-                    binding.bind(context, view, model, layoutType, lifecycle);
+                    binding.bind(context, view, model, fromWrappedLayoutType(layoutType), lifecycle);
                 }
 
                 @Override
                 public View create(Context context, LayoutInflater inflater, ViewGroup parent, int layoutType) {
-                    return binding.create(context, inflater, parent, layoutType);
+                    return binding.create(context, inflater, parent, fromWrappedLayoutType(layoutType));
                 }
 
                 @Override
                 public boolean recycle(View view, int layoutType) {
-                    return binding.recycle(view, layoutType);
+                    return binding.recycle(view, fromWrappedLayoutType(layoutType));
+                }
+            });
+
+            return this;
+        }
+
+        public <T> Creator add(Class<T> clzz, final ViewCreator binding) {
+            final int currentIndex = _bindings.size();
+
+            _bindings.add(new TypeMatchingViewCreator<T>(clzz) {
+                @Override
+                public int findType(Object model) {
+                    return toWrappedLayoutType(binding.findType(model), currentIndex);
+                }
+
+                @Override
+                public void bind(Context context, View view, Object model, int layoutType, CompositeDisposable lifecycle) {
+                    binding.bind(context, view, model, fromWrappedLayoutType(layoutType), lifecycle);
+                }
+
+                @Override
+                public View create(Context context, LayoutInflater inflater, ViewGroup parent, int layoutType) {
+                    return binding.create(context, inflater, parent, fromWrappedLayoutType(layoutType));
+                }
+
+                @Override
+                public boolean recycle(View view, int layoutType) {
+                    return binding.recycle(view, fromWrappedLayoutType(layoutType));
                 }
             });
 
