@@ -95,6 +95,8 @@ public interface ViewCreator<T, TView extends View> {
         }
 
         public Creator add(final MatchingViewCreator binding) {
+            final int currentIndex = _bindings.size();
+
             _bindings.add(new MatchingViewCreator() {
                 @Override
                 public boolean matches(Object model) {
@@ -103,7 +105,7 @@ public interface ViewCreator<T, TView extends View> {
 
                 @Override
                 public int findType(Object model) {
-                    return binding.findType(model);
+                    return toWrappedLayoutType(binding.findType(model), currentIndex);
                 }
 
                 @Override
