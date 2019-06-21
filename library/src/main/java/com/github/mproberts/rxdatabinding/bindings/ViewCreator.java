@@ -17,7 +17,7 @@ import java.util.Map;
 import io.reactivex.disposables.CompositeDisposable;
 
 public interface ViewCreator<T, TView extends View> {
-    
+
     int findType(T model);
 
     void bind(Context context, TView view, T model, int layoutType, CompositeDisposable lifecycle);
@@ -48,7 +48,7 @@ public interface ViewCreator<T, TView extends View> {
                 MatchingViewCreator viewBinding = _bindings.get(i);
 
                 if (viewBinding.matches(model)) {
-                    return i;
+                    return viewBinding.findType(model);
                 }
             }
 
