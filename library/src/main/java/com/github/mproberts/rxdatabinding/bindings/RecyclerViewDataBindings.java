@@ -20,6 +20,9 @@ import com.github.mproberts.rxtools.list.FlowableList;
 import com.github.mproberts.rxtools.list.SimpleFlowableList;
 import com.github.mproberts.rxtools.list.Update;
 
+import java.lang.ref.PhantomReference;
+import java.lang.ref.Reference;
+import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.List;
@@ -277,6 +280,42 @@ public final class RecyclerViewDataBindings {
     }
 
     private static class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapter.ViewHolder> {
+
+        private static final ReferenceQueue<RecyclerView> RECYCLER_VIEW_REFERENCES_QUEUE = new ReferenceQueue<>();
+
+        static {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    Reference<?> referenceFromQueue;
+                    while ((referenceFromQueue = RECYCLER_VIEW_REFERENCES_QUEUE.poll()) != null) {
+                        ((BindingFinalizer)referenceFromQueue).finalizeBinding();
+                        referenceFromQueue.clear();
+                    }
+                }
+            }).start();
+        }
+
+        private class BindingFinalizer extends PhantomReference<RecyclerView> {
+            private BindingFinalizer(RecyclerView recyclerView, ReferenceQueue<? super RecyclerView> queue) {
+                super(recyclerView, queue);
+            }
+
+            private void finalizeBinding() {
+                RecyclerView recyclerView = get();
+                if (recyclerView == null) {
+                    return;
+                }
+
+                RecyclerView.Adapter<?> adapter = recyclerView.getAdapter();
+                if (!(adapter instanceof RecyclerViewAdapter)) {
+                    return;
+                }
+
+                ((RecyclerViewAdapter) adapter).unsubscribe();
+            }
+        }
+
         private List<?> _currentState;
         private Disposable _subscription;
         private ItemViewCreator _viewCreator;
@@ -357,6 +396,8 @@ public final class RecyclerViewDataBindings {
         @Override
         public void onAttachedToRecyclerView(RecyclerView recyclerView) {
             super.onAttachedToRecyclerView(recyclerView);
+
+            new BindingFinalizer(recyclerView, RECYCLER_VIEW_REFERENCES_QUEUE);
 
             _recyclerView = new WeakReference<>(recyclerView);
             subscribe();
