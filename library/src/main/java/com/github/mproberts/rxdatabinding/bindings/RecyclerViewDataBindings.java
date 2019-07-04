@@ -320,7 +320,6 @@ public final class RecyclerViewDataBindings {
         private Disposable _subscription;
         private ItemViewCreator _viewCreator;
         private ItemDataProvider _dataProvider;
-        private WeakReference<RecyclerView> _recyclerView;
 
         public interface ItemDataProvider {
 
@@ -399,7 +398,6 @@ public final class RecyclerViewDataBindings {
 
             new BindingFinalizer(recyclerView, RECYCLER_VIEW_REFERENCES_QUEUE);
 
-            _recyclerView = new WeakReference<>(recyclerView);
             subscribe();
         }
 
@@ -417,11 +415,6 @@ public final class RecyclerViewDataBindings {
                             @Override
                             public void accept(Update<?> update) throws Exception {
                                 _currentState = update.list;
-
-                                if (_recyclerView.get() == null) {
-                                    unsubscribe();
-                                    return;
-                                }
 
                                 for (int i = 0, l = update.changes.size(); i < l; ++i) {
                                     Change change = update.changes.get(i);
