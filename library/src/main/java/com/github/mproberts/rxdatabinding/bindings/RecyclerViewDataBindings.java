@@ -12,9 +12,7 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.github.mproberts.rxdatabinding.BR;
-import com.github.mproberts.rxdatabinding.internal.Lifecycle;
-import com.github.mproberts.rxdatabinding.internal.MutableLifecycle;
-import com.github.mproberts.rxdatabinding.internal.WindowAttachLifecycle;
+import com.github.mproberts.rxdatabinding.R;
 import com.github.mproberts.rxdatabinding.tools.DataBindingTools;
 import com.github.mproberts.rxdatabinding.tools.UiThreadScheduler;
 import com.github.mproberts.rxtools.list.Change;
@@ -22,6 +20,7 @@ import com.github.mproberts.rxtools.list.FlowableList;
 import com.github.mproberts.rxtools.list.SimpleFlowableList;
 import com.github.mproberts.rxtools.list.Update;
 
+import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,16 +40,31 @@ public final class RecyclerViewDataBindings {
 
     @BindingAdapter(value = {"data", "itemLayout"})
     public static void bindList(RecyclerView recyclerView, FlowableList<?> list, @LayoutRes int layoutId) {
+        if (recyclerView.getTag(R.id.recyclerViewAdapter) != null) {
+            return;
+        }
+
+        recyclerView.setTag(R.id.recyclerViewAdapter, new Object());
         recyclerView.setAdapter(new RecyclerViewAdapter(list, new BasicLayoutCreator(layoutId)));
     }
 
     @BindingAdapter(value = {"data", "itemLayoutCreator"})
     public static void bindList(RecyclerView recyclerView, FlowableList<?> list, RecyclerViewAdapter.ItemViewCreator layoutCreator) {
+        if (recyclerView.getTag(R.id.recyclerViewAdapter) != null) {
+            return;
+        }
+
+        recyclerView.setTag(R.id.recyclerViewAdapter, new Object());
         recyclerView.setAdapter(new RecyclerViewAdapter(list, layoutCreator));
     }
 
     @BindingAdapter(value = {"data", "builder"})
     public static void bindList(final RecyclerView recyclerView, FlowableList<?> list, final ViewCreator viewCreator) {
+        if (recyclerView.getTag(R.id.recyclerViewAdapter) != null) {
+            return;
+        }
+
+        recyclerView.setTag(R.id.recyclerViewAdapter, new Object());
         recyclerView.setAdapter(new RecyclerViewAdapter(list, new RecyclerViewAdapter.ItemViewCreator() {
             @Override
             public void bind(Object viewModel, RecyclerViewAdapter.ViewHolder holder) {
@@ -267,7 +281,7 @@ public final class RecyclerViewDataBindings {
         private Disposable _subscription;
         private ItemViewCreator _viewCreator;
         private ItemDataProvider _dataProvider;
-        private MutableLifecycle _lifecycle;
+        private WeakReference<RecyclerView> _recyclerView;
 
         public interface ItemDataProvider {
 
@@ -344,23 +358,8 @@ public final class RecyclerViewDataBindings {
         public void onAttachedToRecyclerView(RecyclerView recyclerView) {
             super.onAttachedToRecyclerView(recyclerView);
 
-            if (_lifecycle != null) {
-                _lifecycle.setActive(false); // will trigger a call to unsubscribe() if active
-            }
-
-            _lifecycle = new WindowAttachLifecycle(recyclerView);
-
-            _lifecycle.addListener(new Lifecycle.Listener() {
-                @Override
-                public void onActive() {
-                    subscribe();
-                }
-
-                @Override
-                public void onInactive() {
-                    unsubscribe();
-                }
-            });
+            _recyclerView = new WeakReference<>(recyclerView);
+            subscribe();
         }
 
         private void subscribe() {
@@ -377,6 +376,11 @@ public final class RecyclerViewDataBindings {
                             @Override
                             public void accept(Update<?> update) throws Exception {
                                 _currentState = update.list;
+
+                                if (_recyclerView.get() == null) {
+                                    unsubscribe();
+                                    return;
+                                }
 
                                 for (int i = 0, l = update.changes.size(); i < l; ++i) {
                                     Change change = update.changes.get(i);
@@ -414,14 +418,9 @@ public final class RecyclerViewDataBindings {
         }
 
         @Override
-        public long getItemId(int position) {
-            return super.getItemId(position);
-        }
-
-        @Override
         public void onDetachedFromRecyclerView(RecyclerView recyclerView) {
             super.onDetachedFromRecyclerView(recyclerView);
-            _lifecycle.setActive(false);
+            unsubscribe();
         }
 
         @Override
