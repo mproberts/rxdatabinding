@@ -60,12 +60,9 @@ public final class RecyclerViewDataBindings {
 
     @BindingAdapter(value = {"persistentData", "itemLayout", "bindingSink"})
     public static void bindList(final RecyclerView recyclerView, final FlowableList<?> list, final @LayoutRes int layoutId, final RecyclerViewBindingSink bindingSink) {
-        DataBindingTools.bindOnlyOnce(recyclerView, R.id.recyclerViewAdapter, new Runnable() {
-            @Override
-            public void run() {
-                recyclerView.setAdapter(new RecyclerViewAdapter(list, new BasicLayoutCreator(layoutId), bindingSink));
-            }
-        });
+        if (recyclerView.getAdapter() == null) {
+            recyclerView.setAdapter(new RecyclerViewAdapter(list, new BasicLayoutCreator(layoutId), bindingSink));
+        }
     }
 
     @BindingAdapter(value = {"data", "itemLayoutCreator"})
@@ -75,12 +72,9 @@ public final class RecyclerViewDataBindings {
 
     @BindingAdapter(value = {"persistentData", "itemLayoutCreator", "bindingSink"})
     public static void bindList(final RecyclerView recyclerView, final FlowableList<?> list, final RecyclerViewAdapter.ItemViewCreator layoutCreator, final RecyclerViewBindingSink bindingSink) {
-        DataBindingTools.bindOnlyOnce(recyclerView, R.id.recyclerViewAdapter, new Runnable() {
-            @Override
-            public void run() {
-                recyclerView.setAdapter(new RecyclerViewAdapter(list, layoutCreator, bindingSink));
-            }
-        });
+        if (recyclerView.getAdapter() == null) {
+            recyclerView.setAdapter(new RecyclerViewAdapter(list, layoutCreator, bindingSink));
+        }
     }
 
     private static RecyclerViewAdapter.ItemViewCreator itemViewCreatorFromViewCreator(final RecyclerView recyclerView, final ViewCreator viewCreator) {
@@ -129,12 +123,9 @@ public final class RecyclerViewDataBindings {
 
     @BindingAdapter(value = {"persistentData", "builder", "bindingSink"})
     public static void bindList(final RecyclerView recyclerView, final FlowableList<?> list, final ViewCreator viewCreator, final RecyclerViewBindingSink bindingSink) {
-        DataBindingTools.bindOnlyOnce(recyclerView, R.id.recyclerViewAdapter, new Runnable() {
-            @Override
-            public void run() {
-                recyclerView.setAdapter(new RecyclerViewAdapter(list, itemViewCreatorFromViewCreator(recyclerView, viewCreator), bindingSink));
-            }
-        });
+        if (recyclerView.getAdapter() == null) {
+            recyclerView.setAdapter(new RecyclerViewAdapter(list, itemViewCreatorFromViewCreator(recyclerView, viewCreator), bindingSink));
+        }
     }
 
     @BindingAdapter(value = {"layoutManager"})
