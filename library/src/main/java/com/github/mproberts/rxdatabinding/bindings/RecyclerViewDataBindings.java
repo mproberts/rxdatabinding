@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.logging.Logger;
 
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.disposables.Disposable;
@@ -287,11 +288,15 @@ public final class RecyclerViewDataBindings {
             new Thread(new Runnable() {
                 @Override
                 public void run() {
+                    Logger.getLogger("yolo").info("recyclerview adapter thread started");
+
                     Reference<?> referenceFromQueue;
                     while ((referenceFromQueue = RECYCLER_VIEW_REFERENCES_QUEUE.poll()) != null) {
                         ((BindingFinalizer)referenceFromQueue).finalizeBinding();
                         referenceFromQueue.clear();
                     }
+
+                    Logger.getLogger("yolo").info("recyclerview adapter thread done");
                 }
             }, "RecyclerViewAdapter cleanup queue").start();
         }
