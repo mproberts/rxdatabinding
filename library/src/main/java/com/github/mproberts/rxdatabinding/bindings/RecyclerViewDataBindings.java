@@ -15,6 +15,9 @@ import android.view.ViewGroup;
 
 import com.github.mproberts.rxdatabinding.BR;
 import com.github.mproberts.rxdatabinding.R;
+import com.github.mproberts.rxdatabinding.internal.Lifecycle;
+import com.github.mproberts.rxdatabinding.internal.MutableLifecycle;
+import com.github.mproberts.rxdatabinding.internal.WindowAttachLifecycle;
 import com.github.mproberts.rxdatabinding.tools.DataBindingTools;
 import com.github.mproberts.rxdatabinding.tools.UiThreadScheduler;
 import com.github.mproberts.rxtools.list.Change;
@@ -302,6 +305,7 @@ public final class RecyclerViewDataBindings {
         private Disposable _subscription;
         private ItemViewCreator _viewCreator;
         private ItemDataProvider _dataProvider;
+        private MutableLifecycle _lifecycle;
         private RecyclerViewBindingSink _bindingSink;
 
         public interface ItemDataProvider {
@@ -380,14 +384,33 @@ public final class RecyclerViewDataBindings {
         @Override
         public void onAttachedToRecyclerView(RecyclerView recyclerView) {
             super.onAttachedToRecyclerView(recyclerView);
-            subscribe(recyclerView);
 
             if (_bindingSink != null) {
+                // If a RecyclerViewBindingSink is specified, it means that we expect this adapter
+                // to stay bound forever (or until said sink decides to detach the adapter from the
+                // recycler view)
+                subscribe();
                 _bindingSink.notifyRecyclerViewBound(recyclerView);
+            } else {
+                // Otherwise, it means that this adapter is expected to be "active" only when the
+                // recycler is attached to the window.
+                _lifecycle = new WindowAttachLifecycle(recyclerView);
+
+                _lifecycle.addListener(new Lifecycle.Listener() {
+                    @Override
+                    public void onActive() {
+                        subscribe();
+                    }
+
+                    @Override
+                    public void onInactive() {
+                        unsubscribe();
+                    }
+                });
             }
         }
 
-        private void subscribe(RecyclerView recyclerView) {
+        private void subscribe() {
             if (_subscription != null) {
                 return;
             }
@@ -426,8 +449,6 @@ public final class RecyclerViewDataBindings {
                             }
                         });
             }
-
-
         }
 
         void unsubscribe() {
@@ -442,7 +463,10 @@ public final class RecyclerViewDataBindings {
         @Override
         public void onDetachedFromRecyclerView(RecyclerView recyclerView) {
             super.onDetachedFromRecyclerView(recyclerView);
-            unsubscribe();
+
+            if (_lifecycle != null) {
+                _lifecycle.setActive(false);
+            }
         }
 
         @Override
