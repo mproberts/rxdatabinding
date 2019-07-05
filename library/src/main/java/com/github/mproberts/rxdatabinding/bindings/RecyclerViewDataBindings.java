@@ -1,6 +1,7 @@
 package com.github.mproberts.rxdatabinding.bindings;
 
 import android.content.Context;
+
 import androidx.databinding.BindingAdapter;
 import androidx.databinding.DataBindingUtil;
 import androidx.databinding.ViewDataBinding;
@@ -20,15 +21,10 @@ import com.github.mproberts.rxtools.list.FlowableList;
 import com.github.mproberts.rxtools.list.SimpleFlowableList;
 import com.github.mproberts.rxtools.list.Update;
 
-import java.lang.ref.PhantomReference;
-import java.lang.ref.Reference;
-import java.lang.ref.ReferenceQueue;
-import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
-import java.util.logging.Logger;
 
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.disposables.Disposable;
@@ -39,31 +35,35 @@ public final class RecyclerViewDataBindings {
     private RecyclerViewDataBindings() {
     }
 
+    interface RecyclerViewBindingSink {
+        void notifyRecyclerViewBound(RecyclerView recyclerView);
+    }
+
     interface LayoutManagerCreator extends Callable<RecyclerView.LayoutManager> {
     }
 
-    @BindingAdapter(value = {"data", "itemLayout"})
-    public static void bindList(RecyclerView recyclerView, FlowableList<?> list, @LayoutRes int layoutId) {
+    @BindingAdapter(value = {"data", "itemLayout", "bindingSink"})
+    public static void bindList(RecyclerView recyclerView, FlowableList<?> list, @LayoutRes int layoutId, RecyclerViewBindingSink bindingSink) {
         if (recyclerView.getTag(R.id.recyclerViewAdapter) != null) {
             return;
         }
 
         recyclerView.setTag(R.id.recyclerViewAdapter, new Object());
-        recyclerView.setAdapter(new RecyclerViewAdapter(list, new BasicLayoutCreator(layoutId)));
+        recyclerView.setAdapter(new RecyclerViewAdapter(list, new BasicLayoutCreator(layoutId), bindingSink));
     }
 
-    @BindingAdapter(value = {"data", "itemLayoutCreator"})
-    public static void bindList(RecyclerView recyclerView, FlowableList<?> list, RecyclerViewAdapter.ItemViewCreator layoutCreator) {
+    @BindingAdapter(value = {"data", "itemLayoutCreator", "bindingSink"})
+    public static void bindList(RecyclerView recyclerView, FlowableList<?> list, RecyclerViewAdapter.ItemViewCreator layoutCreator,RecyclerViewBindingSink bindingSink) {
         if (recyclerView.getTag(R.id.recyclerViewAdapter) != null) {
             return;
         }
 
         recyclerView.setTag(R.id.recyclerViewAdapter, new Object());
-        recyclerView.setAdapter(new RecyclerViewAdapter(list, layoutCreator));
+        recyclerView.setAdapter(new RecyclerViewAdapter(list, layoutCreator, bindingSink));
     }
 
-    @BindingAdapter(value = {"data", "builder"})
-    public static void bindList(final RecyclerView recyclerView, FlowableList<?> list, final ViewCreator viewCreator) {
+    @BindingAdapter(value = {"data", "builder", "bindingSink"})
+    public static void bindList(final RecyclerView recyclerView, FlowableList<?> list, final ViewCreator viewCreator, RecyclerViewBindingSink bindingSink) {
         if (recyclerView.getTag(R.id.recyclerViewAdapter) != null) {
             return;
         }
@@ -104,7 +104,7 @@ public final class RecyclerViewDataBindings {
                     }
                 };
             }
-        }));
+        }, bindingSink));
     }
 
     @BindingAdapter(value = {"layoutManager"})
@@ -282,45 +282,11 @@ public final class RecyclerViewDataBindings {
 
     private static class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapter.ViewHolder> {
 
-        private static final ReferenceQueue<RecyclerView> RECYCLER_VIEW_REFERENCES_QUEUE = new ReferenceQueue<>();
-
-        static {
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    Logger.getLogger("yolo").info("recyclerview adapter thread started");
-
-                    while (true) {
-                        try {
-                            BindingFinalizer ref = (BindingFinalizer) RECYCLER_VIEW_REFERENCES_QUEUE.remove();
-                            Logger.getLogger("yolo").info("got a ref to finalize");
-                            ref.finalizeBinding();
-                            ref.clear();
-                        } catch (InterruptedException ex) {
-                            Logger.getLogger("yolo").info("recyclerview adapter thread started");
-                        }
-                    }
-                }
-            }, "RecyclerViewAdapter cleanup queue").start();
-        }
-
-        private class BindingFinalizer extends PhantomReference<RecyclerView> {
-            private RecyclerViewAdapter adapter;
-
-            private BindingFinalizer(RecyclerView recyclerView, RecyclerViewAdapter adapter, ReferenceQueue<? super RecyclerView> queue) {
-                super(recyclerView, queue);
-                this.adapter = adapter;
-            }
-
-            private void finalizeBinding() {
-                adapter.unsubscribe();
-            }
-        }
-
         private List<?> _currentState;
         private Disposable _subscription;
         private ItemViewCreator _viewCreator;
         private ItemDataProvider _dataProvider;
+        private RecyclerViewBindingSink _bindingSink;
 
         public interface ItemDataProvider {
 
@@ -377,18 +343,20 @@ public final class RecyclerViewDataBindings {
             return _cachedLayoutInflater;
         }
 
-        private RecyclerViewAdapter(final FlowableList<?> list, ItemViewCreator viewCreator) {
+        private RecyclerViewAdapter(final FlowableList<?> list, ItemViewCreator viewCreator, RecyclerViewBindingSink bindingSink) {
             this(new ItemDataProvider() {
                 @Override
                 public FlowableList<?> getList() {
                     return list;
                 }
-            }, viewCreator);
+            }, viewCreator, bindingSink);
         }
 
-        private RecyclerViewAdapter(ItemDataProvider dataProvider, ItemViewCreator viewCreator) {
+        private RecyclerViewAdapter(ItemDataProvider dataProvider, ItemViewCreator viewCreator, RecyclerViewBindingSink bindingSink) {
             _dataProvider = dataProvider;
             _viewCreator = viewCreator;
+
+            _bindingSink = bindingSink;
 
             setHasStableIds(false);
         }
@@ -396,13 +364,11 @@ public final class RecyclerViewDataBindings {
         @Override
         public void onAttachedToRecyclerView(RecyclerView recyclerView) {
             super.onAttachedToRecyclerView(recyclerView);
-
-            new BindingFinalizer(recyclerView, this, RECYCLER_VIEW_REFERENCES_QUEUE);
-
-            subscribe();
+            subscribe(recyclerView);
+            _bindingSink.notifyRecyclerViewBound(recyclerView);
         }
 
-        private void subscribe() {
+        private void subscribe(RecyclerView recyclerView) {
             if (_subscription != null) {
                 return;
             }
@@ -410,8 +376,6 @@ public final class RecyclerViewDataBindings {
             FlowableList<?> list = _dataProvider.getList();
 
             if (list != null) {
-                final WeakReference<RecyclerViewAdapter> weakSelf = new WeakReference<>(this);
-
                 _subscription = list.updates()
                         .observeOn(UiThreadScheduler.uiThread())
                         .subscribe(new Consumer<Update<?>>() {
@@ -419,36 +383,32 @@ public final class RecyclerViewDataBindings {
                             public void accept(Update<?> update) throws Exception {
                                 _currentState = update.list;
 
-                                RecyclerView.Adapter adapter = weakSelf.get();
-                                if (adapter == null) {
-                                    _subscription.dispose();
-                                    return;
-                                }
-
                                 for (int i = 0, l = update.changes.size(); i < l; ++i) {
                                     Change change = update.changes.get(i);
 
                                     switch (change.type) {
                                         case Moved:
-                                            weakSelf.get().notifyItemMoved(change.from, change.to);
+                                            notifyItemMoved(change.from, change.to);
                                             break;
 
                                         case Inserted:
-                                            weakSelf.get().notifyItemInserted(change.to);
+                                            notifyItemInserted(change.to);
                                             break;
 
                                         case Removed:
-                                            weakSelf.get().notifyItemRangeRemoved(change.from, 1);
+                                            notifyItemRangeRemoved(change.from, 1);
                                             break;
 
                                         case Reloaded:
-                                            weakSelf.get().notifyDataSetChanged();
+                                            notifyDataSetChanged();
                                             break;
                                     }
                                 }
                             }
                         });
             }
+
+
         }
 
         void unsubscribe() {
