@@ -116,6 +116,15 @@ public final class DataBindingTools {
         }
     }
 
+    public static void bindOnlyOnce(View view, int boundId, Runnable action) {
+        if (view.getTag(boundId) != null) {
+            return;
+        }
+
+        view.setTag(boundId, new Object());
+        action.run();
+    }
+
     private static MutableLifecycle setupLifecycle(View view) {
         MutableLifecycle lifecycle = (MutableLifecycle) view.getTag(TAG_LIFECYCLE);
 
