@@ -295,6 +295,7 @@ public final class RecyclerViewDataBindings {
                             BindingFinalizer ref = (BindingFinalizer) RECYCLER_VIEW_REFERENCES_QUEUE.remove();
                             Logger.getLogger("yolo").info("got a ref to finalize");
                             ref.finalizeBinding();
+                            ref.clear();
                         } catch (InterruptedException ex) {
                             Logger.getLogger("yolo").info("recyclerview adapter thread started");
                         }
