@@ -35,7 +35,7 @@ public final class RecyclerViewDataBindings {
     private RecyclerViewDataBindings() {
     }
 
-    interface RecyclerViewBindingSink {
+    public interface RecyclerViewBindingSink {
         void notifyRecyclerViewBound(RecyclerView recyclerView);
     }
 
