@@ -290,34 +290,29 @@ public final class RecyclerViewDataBindings {
                 public void run() {
                     Logger.getLogger("yolo").info("recyclerview adapter thread started");
 
-                    Reference<?> referenceFromQueue;
-                    while ((referenceFromQueue = RECYCLER_VIEW_REFERENCES_QUEUE.poll()) != null) {
-                        ((BindingFinalizer)referenceFromQueue).finalizeBinding();
-                        referenceFromQueue.clear();
+                    while (true) {
+                        try {
+                            BindingFinalizer ref = (BindingFinalizer) RECYCLER_VIEW_REFERENCES_QUEUE.remove();
+                            Logger.getLogger("yolo").info("got a ref to finalize");
+                            ref.finalizeBinding();
+                        } catch (InterruptedException ex) {
+                            Logger.getLogger("yolo").info("recyclerview adapter thread started");
+                        }
                     }
-
-                    Logger.getLogger("yolo").info("recyclerview adapter thread done");
                 }
             }, "RecyclerViewAdapter cleanup queue").start();
         }
 
         private class BindingFinalizer extends PhantomReference<RecyclerView> {
-            private BindingFinalizer(RecyclerView recyclerView, ReferenceQueue<? super RecyclerView> queue) {
+            private RecyclerViewAdapter adapter;
+
+            private BindingFinalizer(RecyclerView recyclerView, RecyclerViewAdapter adapter, ReferenceQueue<? super RecyclerView> queue) {
                 super(recyclerView, queue);
+                this.adapter = adapter;
             }
 
             private void finalizeBinding() {
-                RecyclerView recyclerView = get();
-                if (recyclerView == null) {
-                    return;
-                }
-
-                RecyclerView.Adapter<?> adapter = recyclerView.getAdapter();
-                if (!(adapter instanceof RecyclerViewAdapter)) {
-                    return;
-                }
-
-                ((RecyclerViewAdapter) adapter).unsubscribe();
+                adapter.unsubscribe();
             }
         }
 
@@ -401,7 +396,7 @@ public final class RecyclerViewDataBindings {
         public void onAttachedToRecyclerView(RecyclerView recyclerView) {
             super.onAttachedToRecyclerView(recyclerView);
 
-            new BindingFinalizer(recyclerView, RECYCLER_VIEW_REFERENCES_QUEUE);
+            new BindingFinalizer(recyclerView, this, RECYCLER_VIEW_REFERENCES_QUEUE);
 
             subscribe();
         }
@@ -455,7 +450,7 @@ public final class RecyclerViewDataBindings {
             }
         }
 
-        private void unsubscribe() {
+        void unsubscribe() {
             if (_subscription == null) {
                 return;
             }
