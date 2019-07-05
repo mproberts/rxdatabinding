@@ -293,7 +293,7 @@ public final class RecyclerViewDataBindings {
                         referenceFromQueue.clear();
                     }
                 }
-            }).start();
+            }, "RecyclerViewAdapter cleanup queue").start();
         }
 
         private class BindingFinalizer extends PhantomReference<RecyclerView> {
@@ -409,6 +409,8 @@ public final class RecyclerViewDataBindings {
             FlowableList<?> list = _dataProvider.getList();
 
             if (list != null) {
+                final WeakReference<RecyclerViewAdapter> weakSelf = new WeakReference<>(this);
+
                 _subscription = list.updates()
                         .observeOn(UiThreadScheduler.uiThread())
                         .subscribe(new Consumer<Update<?>>() {
@@ -416,24 +418,30 @@ public final class RecyclerViewDataBindings {
                             public void accept(Update<?> update) throws Exception {
                                 _currentState = update.list;
 
+                                RecyclerView.Adapter adapter = weakSelf.get();
+                                if (adapter == null) {
+                                    _subscription.dispose();
+                                    return;
+                                }
+
                                 for (int i = 0, l = update.changes.size(); i < l; ++i) {
                                     Change change = update.changes.get(i);
 
                                     switch (change.type) {
                                         case Moved:
-                                            notifyItemMoved(change.from, change.to);
+                                            weakSelf.get().notifyItemMoved(change.from, change.to);
                                             break;
 
                                         case Inserted:
-                                            notifyItemInserted(change.to);
+                                            weakSelf.get().notifyItemInserted(change.to);
                                             break;
 
                                         case Removed:
-                                            notifyItemRangeRemoved(change.from, 1);
+                                            weakSelf.get().notifyItemRangeRemoved(change.from, 1);
                                             break;
 
                                         case Reloaded:
-                                            notifyDataSetChanged();
+                                            weakSelf.get().notifyDataSetChanged();
                                             break;
                                     }
                                 }
