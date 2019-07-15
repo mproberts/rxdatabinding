@@ -1,6 +1,8 @@
 package com.github.mproberts.rxdatabinding.bindings;
 
 import android.content.Context;
+
+import androidx.annotation.Nullable;
 import androidx.databinding.BindingAdapter;
 import androidx.databinding.DataBindingUtil;
 import androidx.databinding.ViewDataBinding;
@@ -12,6 +14,7 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.github.mproberts.rxdatabinding.BR;
+import com.github.mproberts.rxdatabinding.R;
 import com.github.mproberts.rxdatabinding.internal.Lifecycle;
 import com.github.mproberts.rxdatabinding.internal.MutableLifecycle;
 import com.github.mproberts.rxdatabinding.internal.WindowAttachLifecycle;
@@ -36,22 +39,46 @@ public final class RecyclerViewDataBindings {
     private RecyclerViewDataBindings() {
     }
 
+    /**
+     * RecyclerViewBindingSink can be provided through a binding adapter in order to notify a
+     * fragment or activity that a recycler view was bound. This can be used when a recycler view's
+     * data should be bound even when it is removed from the window.
+     * Recycler views using a binding sink are only bound once and should handle being detached
+     * manually.
+     */
+    public interface RecyclerViewBindingSink {
+        void notifyRecyclerViewBound(RecyclerView recyclerView);
+    }
+
     interface LayoutManagerCreator extends Callable<RecyclerView.LayoutManager> {
     }
 
     @BindingAdapter(value = {"data", "itemLayout"})
     public static void bindList(RecyclerView recyclerView, FlowableList<?> list, @LayoutRes int layoutId) {
-        recyclerView.setAdapter(new RecyclerViewAdapter(list, new BasicLayoutCreator(layoutId)));
+        recyclerView.setAdapter(new RecyclerViewAdapter(list, new BasicLayoutCreator(layoutId), null));
+    }
+
+    @BindingAdapter(value = {"persistentData", "itemLayout", "bindingSink"})
+    public static void bindList(final RecyclerView recyclerView, final FlowableList<?> list, final @LayoutRes int layoutId, final RecyclerViewBindingSink bindingSink) {
+        if (recyclerView.getAdapter() == null) {
+            recyclerView.setAdapter(new RecyclerViewAdapter(list, new BasicLayoutCreator(layoutId), bindingSink));
+        }
     }
 
     @BindingAdapter(value = {"data", "itemLayoutCreator"})
     public static void bindList(RecyclerView recyclerView, FlowableList<?> list, RecyclerViewAdapter.ItemViewCreator layoutCreator) {
-        recyclerView.setAdapter(new RecyclerViewAdapter(list, layoutCreator));
+        recyclerView.setAdapter(new RecyclerViewAdapter(list, layoutCreator, null));
     }
 
-    @BindingAdapter(value = {"data", "builder"})
-    public static void bindList(final RecyclerView recyclerView, FlowableList<?> list, final ViewCreator viewCreator) {
-        recyclerView.setAdapter(new RecyclerViewAdapter(list, new RecyclerViewAdapter.ItemViewCreator() {
+    @BindingAdapter(value = {"persistentData", "itemLayoutCreator", "bindingSink"})
+    public static void bindList(final RecyclerView recyclerView, final FlowableList<?> list, final RecyclerViewAdapter.ItemViewCreator layoutCreator, final RecyclerViewBindingSink bindingSink) {
+        if (recyclerView.getAdapter() == null) {
+            recyclerView.setAdapter(new RecyclerViewAdapter(list, layoutCreator, bindingSink));
+        }
+    }
+
+    private static RecyclerViewAdapter.ItemViewCreator itemViewCreatorFromViewCreator(final RecyclerView recyclerView, final ViewCreator viewCreator) {
+        return new RecyclerViewAdapter.ItemViewCreator() {
             @Override
             public void bind(Object viewModel, RecyclerViewAdapter.ViewHolder holder) {
                 ItemViewHolder viewHolder = (ItemViewHolder) holder;
@@ -86,7 +113,19 @@ public final class RecyclerViewDataBindings {
                     }
                 };
             }
-        }));
+        };
+    }
+
+    @BindingAdapter(value = {"data", "builder"})
+    public static void bindList(final RecyclerView recyclerView, FlowableList<?> list, final ViewCreator viewCreator) {
+        recyclerView.setAdapter(new RecyclerViewAdapter(list, itemViewCreatorFromViewCreator(recyclerView, viewCreator), null));
+    }
+
+    @BindingAdapter(value = {"persistentData", "builder", "bindingSink"})
+    public static void bindList(final RecyclerView recyclerView, final FlowableList<?> list, final ViewCreator viewCreator, final RecyclerViewBindingSink bindingSink) {
+        if (recyclerView.getAdapter() == null) {
+            recyclerView.setAdapter(new RecyclerViewAdapter(list, itemViewCreatorFromViewCreator(recyclerView, viewCreator), bindingSink));
+        }
     }
 
     @BindingAdapter(value = {"layoutManager"})
@@ -263,11 +302,13 @@ public final class RecyclerViewDataBindings {
     }
 
     private static class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapter.ViewHolder> {
+
         private List<?> _currentState;
         private Disposable _subscription;
         private ItemViewCreator _viewCreator;
         private ItemDataProvider _dataProvider;
         private MutableLifecycle _lifecycle;
+        private RecyclerViewBindingSink _bindingSink;
 
         public interface ItemDataProvider {
 
@@ -324,18 +365,20 @@ public final class RecyclerViewDataBindings {
             return _cachedLayoutInflater;
         }
 
-        private RecyclerViewAdapter(final FlowableList<?> list, ItemViewCreator viewCreator) {
+        private RecyclerViewAdapter(final FlowableList<?> list, ItemViewCreator viewCreator, @Nullable RecyclerViewBindingSink bindingSink) {
             this(new ItemDataProvider() {
                 @Override
                 public FlowableList<?> getList() {
                     return list;
                 }
-            }, viewCreator);
+            }, viewCreator, bindingSink);
         }
 
-        private RecyclerViewAdapter(ItemDataProvider dataProvider, ItemViewCreator viewCreator) {
+        private RecyclerViewAdapter(ItemDataProvider dataProvider, ItemViewCreator viewCreator, @Nullable RecyclerViewBindingSink bindingSink) {
             _dataProvider = dataProvider;
             _viewCreator = viewCreator;
+
+            _bindingSink = bindingSink;
 
             setHasStableIds(false);
         }
@@ -344,23 +387,29 @@ public final class RecyclerViewDataBindings {
         public void onAttachedToRecyclerView(RecyclerView recyclerView) {
             super.onAttachedToRecyclerView(recyclerView);
 
-            if (_lifecycle != null) {
-                _lifecycle.setActive(false); // will trigger a call to unsubscribe() if active
+            if (_bindingSink != null) {
+                // If a RecyclerViewBindingSink is specified, it means that we expect this adapter
+                // to stay bound forever (or until said sink decides to detach the adapter from the
+                // recycler view)
+                subscribe();
+                _bindingSink.notifyRecyclerViewBound(recyclerView);
+            } else {
+                // Otherwise, it means that this adapter is expected to be "active" only when the
+                // recycler is attached to the window.
+                _lifecycle = new WindowAttachLifecycle(recyclerView);
+
+                _lifecycle.addListener(new Lifecycle.Listener() {
+                    @Override
+                    public void onActive() {
+                        subscribe();
+                    }
+
+                    @Override
+                    public void onInactive() {
+                        unsubscribe();
+                    }
+                });
             }
-
-            _lifecycle = new WindowAttachLifecycle(recyclerView);
-
-            _lifecycle.addListener(new Lifecycle.Listener() {
-                @Override
-                public void onActive() {
-                    subscribe();
-                }
-
-                @Override
-                public void onInactive() {
-                    unsubscribe();
-                }
-            });
         }
 
         private void subscribe() {
@@ -404,7 +453,7 @@ public final class RecyclerViewDataBindings {
             }
         }
 
-        private void unsubscribe() {
+        void unsubscribe() {
             if (_subscription == null) {
                 return;
             }
@@ -414,14 +463,12 @@ public final class RecyclerViewDataBindings {
         }
 
         @Override
-        public long getItemId(int position) {
-            return super.getItemId(position);
-        }
-
-        @Override
         public void onDetachedFromRecyclerView(RecyclerView recyclerView) {
             super.onDetachedFromRecyclerView(recyclerView);
-            _lifecycle.setActive(false);
+
+            if (_lifecycle != null) {
+                _lifecycle.setActive(false);
+            }
         }
 
         @Override
