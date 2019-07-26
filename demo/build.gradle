@@ -53,7 +53,7 @@ dependencies {
     implementation "com.github.bumptech.glide:glide:4.7.1"
     annotationProcessor "com.google.dagger:dagger-compiler:2.18"
     implementation 'com.github.mproberts.navigator:annotations:e3d05b495c'
-    implementation 'com.github.mproberts:rxtools:0.5.2'
+    implementation 'com.github.mproberts:rxtools:1b2108b938'
     annotationProcessor 'com.github.mproberts.navigator:processor:e3d05b495c'
     testImplementation 'junit:junit:4.12'
 }
