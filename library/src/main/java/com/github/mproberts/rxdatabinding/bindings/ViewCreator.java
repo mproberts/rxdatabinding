@@ -1,13 +1,9 @@
 package com.github.mproberts.rxdatabinding.bindings;
 
 import android.content.Context;
-import androidx.databinding.DataBindingUtil;
-import androidx.databinding.ViewDataBinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-
-import com.github.mproberts.rxdatabinding.BR;
 
 import java.util.ArrayList;
 import java.util.HashMap;
