@@ -451,7 +451,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
             int notificationId = intent.getIntExtra(KEY_NOTIFICATION_ID, INVALID_NOTIFICATION_ID);
 
             if (notificationId == INVALID_NOTIFICATION_ID) {
-                throw new IllegalStateException("Invalid notification ID provided");
+                throw new IllegalArgumentException("Invalid notification ID provided");
             }
 
             for (BaseNotificationBinding binding : _notificationBindings) {
@@ -465,7 +465,7 @@ public class NotificationBindingHandler<T> extends BroadcastReceiver {
             String actionName = intent.getStringExtra(KEY_MAPPED_ACTION);
 
             if (notificationId == INVALID_NOTIFICATION_ID) {
-                throw new IllegalStateException("Invalid notification ID provided");
+                throw new IllegalArgumentException("Invalid notification ID provided");
             }
 
             for (BaseNotificationBinding binding : _notificationBindings) {
